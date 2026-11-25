@@ -67,6 +67,8 @@ function persistenceMessage(error: unknown): string {
 
 interface GameStore {
   company: CompanyService;
+  companyVersion: number;
+  managementPanelOpen: boolean;
   saveRevision: number | null;
   persistenceError: string | null;
   agents: AgentEntity[];
@@ -83,6 +85,8 @@ interface GameStore {
   lastSavedAt: string | null;
 
   tickSimulation: (realDeltaSec: number) => void;
+  notifyCompanyChange: () => void;
+  setManagementPanelOpen: (open: boolean) => void;
   togglePause: () => void;
   setPaused: (paused: boolean) => void;
   setSpeed: (speed: SpeedOption) => void;
@@ -91,6 +95,7 @@ interface GameStore {
   selectAgent: (id: string | null) => void;
   focusOnAgent: (id: string) => void;
   focusOnRoom: (roomId: RoomId) => void;
+  resetOverviewCamera: () => void;
   clearCameraFocus: () => void;
   commandAgent: (id: string, targetState: AgentState, waypointId?: string) => void;
   updatePerfStats: (perf: PerfStats) => void;
@@ -105,6 +110,7 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
   return {
     agents,
     company: CompanyService.create(agents),
+    companyVersion: 0,
     saveRevision,
     persistenceError: null,
     day: 1,
@@ -119,6 +125,8 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   company: CompanyService.create(initialAgents),
+  companyVersion: 0,
+  managementPanelOpen: false,
   saveRevision: null,
   persistenceError: null,
   agents: initialAgents,
@@ -149,20 +157,46 @@ export const useGameStore = create<GameStore>((set, get) => ({
       relationshipSystem
     );
     // Mirror the backend's current task in the existing inspector, including manual reassignment.
+    let taskChanged = false;
     if (!registeredTasks) {
       for (const agent of res.agents) {
         const task = state.company.tasks.getDisplayTask(agent.id);
-        agent.currentTask = task?.title ?? '';
-        agent.taskProgress = Math.round(task?.progress ?? 0);
+        const nextTitle = task?.title ?? '';
+        const nextProgress = Math.round(task?.progress ?? 0);
+        if (agent.currentTask !== nextTitle || agent.taskProgress !== nextProgress) {
+          taskChanged = true;
+        }
+        agent.currentTask = nextTitle;
+        agent.taskProgress = nextProgress;
       }
     }
     set({
       agents: res.agents,
       simMinutes: res.simMinutes,
       day: res.day,
+      companyVersion: taskChanged ? state.companyVersion + 1 : state.companyVersion,
     });
   },
 
+  notifyCompanyChange: () => {
+    const state = get();
+    const syncedAgents = state.agents.map((agent) => {
+      const emp = state.company.staff.getEmployee(agent.id);
+      const task = state.company.tasks.getDisplayTask(agent.id);
+      return {
+        ...agent,
+        department: emp.department,
+        currentTask: task?.title ?? '',
+        taskProgress: Math.round(task?.progress ?? 0),
+      };
+    });
+    set({
+      agents: syncedAgents,
+      companyVersion: state.companyVersion + 1,
+    });
+  },
+
+  setManagementPanelOpen: (open) => set({ managementPanelOpen: open }),
   togglePause: () => set((s) => ({ isPaused: !s.isPaused })),
   setPaused: (paused) => set({ isPaused: paused }),
   setSpeed: (speed) => set({ speed }),
@@ -177,7 +211,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedAgentId: id,
       cameraFocusTarget: {
         target: [agent.position[0], 1, agent.position[2]],
-        offset: [0, 6.5, 7.5],
+        offset: [0, 6.2, 7.2],
       },
     });
   },
@@ -192,6 +226,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       },
     });
   },
+
+  resetOverviewCamera: () =>
+    set({
+      cameraFocusTarget: {
+        target: [0, 0, 0],
+        offset: [0, 21, 24],
+      },
+    }),
 
   clearCameraFocus: () => set({ cameraFocusTarget: null }),
 
@@ -260,6 +302,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       for (const agent of initialAgents) company.staff.getEmployee(agent.id);
       set({
         company,
+        companyVersion: get().companyVersion + 1,
         saveRevision,
         persistenceError: null,
         agents: saved.agents,

@@ -8,6 +8,7 @@ import type {
 } from '../ai/interfaces';
 import { findPathToWaypoint } from '../navigation/pathfinder';
 import { clampOutsideObstacles } from '../navigation/collision';
+import { getSeatFacingRotation } from '../navigation/waypointGraph';
 
 const WALK_SPEED_MPS = 2.6;
 
@@ -82,6 +83,10 @@ export function stepSimulation(
           a.state = a.pendingStateAfterWalk ?? 'Idle';
           a.pendingStateAfterWalk = null;
           a.stateTimerSec = 10 + (a.numericIndex % 6) * 2.5;
+          const seatRot = getSeatFacingRotation(a.position);
+          if (seatRot !== null) {
+            a.rotationY = seatRot;
+          }
         }
       } else {
         const nx = a.position[0] + (dx / dist) * stepDist;
@@ -92,6 +97,19 @@ export function stepSimulation(
         a.rotationY = Math.atan2(dx, dz);
       }
     } else {
+      // Ensure seated agents always face their desk monitor or conference table
+      if (
+        a.state === 'Working' ||
+        a.state === 'Sitting' ||
+        a.state === 'Meeting' ||
+        a.state === 'Resting'
+      ) {
+        const seatRot = getSeatFacingRotation(a.position);
+        if (seatRot !== null) {
+          a.rotationY = seatRot;
+        }
+      }
+
       // Update metrics based on current state
       updateAgentMetrics(a, simDeltaSec, taskManager);
 
@@ -219,6 +237,10 @@ function applyIntentToAgent(
 
   a.state = intent.targetState;
   a.stateTimerSec = 10 + (a.numericIndex % 5) * 2.5;
+  const seatRot = getSeatFacingRotation(a.position);
+  if (seatRot !== null) {
+    a.rotationY = seatRot;
+  }
 }
 
 function clamp(v: number): number {

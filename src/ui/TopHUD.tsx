@@ -1,5 +1,13 @@
 import React from 'react';
-import { Pause, Play, Save, RotateCcw, MessageSquare, Monitor } from 'lucide-react';
+import {
+  Pause,
+  Play,
+  Save,
+  RotateCcw,
+  MessageSquare,
+  Monitor,
+  LayoutDashboard,
+} from 'lucide-react';
 import { SPEED_OPTIONS, useGameStore } from '../store/useGameStore';
 import type { QualityLevel } from '../services/performanceMonitor';
 
@@ -19,11 +27,13 @@ export const TopHUD: React.FC = () => {
   const showBubbles = useGameStore((s) => s.showSpeechBubbles);
   const perf = useGameStore((s) => s.perf);
   const agents = useGameStore((s) => s.agents);
+  const managementPanelOpen = useGameStore((s) => s.managementPanelOpen);
 
   const togglePause = useGameStore((s) => s.togglePause);
   const setSpeed = useGameStore((s) => s.setSpeed);
   const setQuality = useGameStore((s) => s.setQuality);
   const toggleSpeechBubbles = useGameStore((s) => s.toggleSpeechBubbles);
+  const setManagementPanelOpen = useGameStore((s) => s.setManagementPanelOpen);
   const saveNow = useGameStore((s) => s.saveNow);
   const resetSimulation = useGameStore((s) => s.resetSimulation);
 
@@ -36,11 +46,21 @@ export const TopHUD: React.FC = () => {
       <div className="hud-brand">
         <div className="hud-title">AI COMPANY WORLD 3D</div>
         <div className="hud-subtitle">
-          V0.1 Foundation • Ngày {day} • {formatClock(simMinutes)} • Năng suất: {avgProductivity}%
+          V0.2 Living Office • Ngày {day} • {formatClock(simMinutes)} • Năng suất: {avgProductivity}%
         </div>
       </div>
 
       <div className="hud-controls">
+        <button
+          className={`hud-btn ${managementPanelOpen ? 'btn-accent' : ''}`}
+          onClick={() => setManagementPanelOpen(!managementPanelOpen)}
+          data-testid="open-company-mgmt-btn"
+          title="Quản trị Nhân sự, Tài chính, Dự án & Nhiệm vụ"
+        >
+          <LayoutDashboard size={14} />
+          <span>Quản trị</span>
+        </button>
+
         <button
           className={`hud-btn ${isPaused ? 'btn-accent' : ''}`}
           onClick={togglePause}
