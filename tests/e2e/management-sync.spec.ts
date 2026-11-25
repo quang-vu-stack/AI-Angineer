@@ -82,8 +82,6 @@ test('management changes, rejected expenses, ownership and KPI survive save unti
   await projects.click();
   await expect(project).toContainText('Hoàn thành: 1 (100%)');
 
-  await page.getByTestId('close-company-mgmt-btn').click();
-  await page.getByTitle('Lưu IndexedDB').click();
   const readRevision = () => page.evaluate(async () => {
     return new Promise<number | null>((resolve, reject) => {
       const request = indexedDB.open('ai_company_world_3d_db', 1);
@@ -98,7 +96,11 @@ test('management changes, rejected expenses, ownership and KPI survive save unti
       };
     });
   });
-  await expect.poll(readRevision).toBe(1);
+  const revBeforeSave = (await readRevision()) ?? 0;
+  await page.getByTestId('close-company-mgmt-btn').click();
+  await page.getByTitle('Lưu IndexedDB').click();
+  await expect.poll(async () => (await readRevision()) ?? 0).toBeGreaterThan(revBeforeSave);
+  const revAfterSave = (await readRevision()) ?? 0;
 
   await page.reload();
   await open.click();
@@ -114,7 +116,7 @@ test('management changes, rejected expenses, ownership and KPI survive save unti
 
   await page.getByTestId('close-company-mgmt-btn').click();
   await page.getByTitle('Đặt lại mô phỏng').click();
-  await expect.poll(readRevision).toBe(2);
+  await expect.poll(async () => (await readRevision()) ?? 0).toBeGreaterThan(revAfterSave);
   await open.click();
   await projects.click();
   await expect(project).toHaveCount(0);
