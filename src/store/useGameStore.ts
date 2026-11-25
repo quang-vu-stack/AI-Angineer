@@ -70,6 +70,8 @@ function persistenceMessage(error: unknown): string {
 interface GameStore {
   company: CompanyService;
   coordination: Coordination;
+  companyVersion: number;
+  managementPanelOpen: boolean;
   saveRevision: number | null;
   persistenceError: string | null;
   agents: AgentEntity[];
@@ -87,6 +89,9 @@ interface GameStore {
 
   tickSimulation: (realDeltaSec: number) => void;
   scheduleMeeting: (projectId: string) => boolean;
+  notifyCompanyChange: () => void;
+  setManagementPanelOpen: (open: boolean) => void;
+  resetOverviewCamera: () => void;
   togglePause: () => void;
   setPaused: (paused: boolean) => void;
   setSpeed: (speed: SpeedOption) => void;
@@ -110,6 +115,8 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
     agents,
     company: CompanyService.create(agents),
     coordination: new Coordination(),
+    companyVersion: 0,
+    managementPanelOpen: false;
     saveRevision,
     persistenceError: null,
     day: 1,
@@ -125,6 +132,8 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
 export const useGameStore = create<GameStore>((set, get) => ({
   company: CompanyService.create(initialAgents),
   coordination: new Coordination(),
+  companyVersion: 0,
+  managementPanelOpen: false,
   saveRevision: null,
   persistenceError: null,
   agents: initialAgents,
@@ -148,7 +157,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const started = state.coordination.startMeeting(
       agents, state.company.tasks, simulationTime(state.day, state.simMinutes), projectId,
     );
-    if (started) set({ agents });
+    if (started) set({ agents, companyVersion: state.companyVersion + 1 });
     return started;
   },
 
@@ -168,21 +177,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state.coordination,
       registeredTasks ? undefined : state.company.tasks,
     );
-    // Mirror the backend's current task in the existing inspector, including manual reassignment.
-    if (!registeredTasks) {
-      for (const agent of res.agents) {
-        const task = state.company.tasks.getDisplayTask(agent.id);
-        agent.currentTask = task?.title ?? '';
-        agent.taskProgress = Math.round(task?.progress ?? 0);
-      }
-    }
+  notifyCompanyChange: () => {
+    const state = get();
+    const syncedAgents = state.agents.map((agent) => {
+      const emp = state.company.staff.getEmployee(agent.id);
+      const task = state.company.tasks.getDisplayTask(agent.id);
+      return {
+        ...agent,
+        department: emp.department,
+        currentTask: task?.title ?? '',
+        taskProgress: Math.round(task?.progress ?? 0),
+      };
+    });
     set({
-      agents: res.agents,
-      simMinutes: res.simMinutes,
-      day: res.day,
+      agents: syncedAgents,
+      companyVersion: state.companyVersion + 1,
     });
   },
 
+  setManagementPanelOpen: (open) => set({ managementPanelOpen: open }),
   togglePause: () => set((s) => ({ isPaused: !s.isPaused })),
   setPaused: (paused) => set({ isPaused: paused }),
   setSpeed: (speed) => set({ speed }),
@@ -197,7 +210,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       selectedAgentId: id,
       cameraFocusTarget: {
         target: [agent.position[0], 1, agent.position[2]],
-        offset: [0, 6.5, 7.5],
+        offset: [0, 6.2, 7.2],
       },
     });
   },
@@ -212,6 +225,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       },
     });
   },
+
+  resetOverviewCamera: () =>
+    set({
+      cameraFocusTarget: {
+        target: [0, 0, 0],
+        offset: [0, 21, 24],
+      },
+    }),
 
   clearCameraFocus: () => set({ cameraFocusTarget: null }),
 
@@ -293,6 +314,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({
         company,
         coordination: new Coordination(ai?.coordination),
+        companyVersion: get().companyVersion + 1,
         saveRevision,
         persistenceError: null,
         agents: saved.agents,

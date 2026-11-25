@@ -27,6 +27,29 @@ export type AgentState =
 
 export type Gender = 'Nam' | 'Nữ';
 
+export type HairStyle =
+  | 'short'
+  | 'sidepart'
+  | 'spiky'
+  | 'bob'
+  | 'long'
+  | 'ponytail'
+  | 'bun'
+  | 'curly';
+
+export type OutfitStyle =
+  | 'suit'
+  | 'blazer'
+  | 'shirt'
+  | 'hoodie'
+  | 'sweater'
+  | 'cardigan'
+  | 'polo';
+
+export type FacialHair = 'none' | 'stubble' | 'beard' | 'mustache';
+
+export type AccessoryType = 'none' | 'tie' | 'scarf' | 'headphones' | 'watch' | 'earrings';
+
 export interface AgentAppearance {
   shirtColor: string;
   pantsColor: string;
@@ -34,6 +57,15 @@ export interface AgentAppearance {
   hairColor: string;
   heightScale: number;
   hasGlasses: boolean;
+  // Sprint 02 optional appearance traits (backward-compatible with V0.1 saves)
+  buildScale?: number;
+  hairStyle?: HairStyle;
+  outfitStyle?: OutfitStyle;
+  jacketColor?: string;
+  shoesColor?: string;
+  eyeColor?: string;
+  facialHair?: FacialHair;
+  accessory?: AccessoryType;
 }
 
 export interface AgentEntity {

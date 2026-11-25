@@ -9,6 +9,7 @@ import type {
 } from '../ai/interfaces';
 import { findPathToWaypoint } from '../navigation/pathfinder';
 import { clampOutsideObstacles } from '../navigation/collision';
+import { getSeatFacingRotation } from '../navigation/waypointGraph';
 import type { TaskManager } from '../tasks/taskManager';
 import { simulationTime } from './coordination';
 import type { Coordination } from './coordination';
@@ -86,6 +87,7 @@ export function stepSimulation(
           a.state = a.pendingStateAfterWalk ?? 'Idle';
           a.pendingStateAfterWalk = null;
           a.stateTimerSec = 10 + (a.numericIndex % 6) * 2.5;
+          alignSeat(a);
         }
       } else {
         const nx = a.position[0] + (dx / dist) * stepDist;
@@ -96,6 +98,7 @@ export function stepSimulation(
         a.rotationY = Math.atan2(dx, dz);
       }
     } else {
+      alignSeat(a);
       // Update metrics based on current state
       if (a.state === 'Working') coordination?.productivity.recordWork(from, simDeltaSec, a.productivity);
       if (updateAgentMetrics(a, simDeltaSec, taskManager)) {
@@ -210,6 +213,14 @@ function applyIntentToAgent(a: AgentEntity, intent: AgentIntent): void {
 
   a.state = intent.targetState;
   a.stateTimerSec = 10 + (a.numericIndex % 5) * 2.5;
+  alignSeat(a);
+}
+
+function alignSeat(a: AgentEntity): void {
+  if (a.state === 'Working' || a.state === 'Sitting' || a.state === 'Meeting' || a.state === 'Resting') {
+    const rotation = getSeatFacingRotation(a.position);
+    if (rotation !== null) a.rotationY = rotation;
+  }
 }
 
 function clamp(v: number): number {

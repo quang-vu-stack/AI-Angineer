@@ -4,6 +4,7 @@ import { TopHUD } from './ui/TopHUD';
 import { AgentListPanel } from './ui/AgentListPanel';
 import { AgentInspector } from './ui/AgentInspector';
 import { RoomQuickNav } from './ui/RoomQuickNav';
+import { CompanyManagementPanel } from './ui/CompanyManagementPanel';
 import { useGameStore } from './store/useGameStore';
 
 export const App: React.FC = () => {
@@ -27,6 +28,7 @@ export const App: React.FC = () => {
       <AgentListPanel />
       <AgentInspector />
       <RoomQuickNav />
+      <CompanyManagementPanel />
     </main>
   );
 };
