@@ -1,3 +1,4 @@
+import { BusinessEngine } from './businessEngine';
 import { DEPARTMENT_META } from '../agents/roster';
 import type { AgentEntity, DepartmentId } from '../agents/types';
 import { CompanyLedger, summarizeLedger } from '../economy/ledger';
@@ -32,6 +33,40 @@ export function parseCompanySnapshot(input: unknown): CompanySnapshot {
   for (const entry of snapshot.ledger) {
     if (entry.projectId !== null && !projects.has(entry.projectId)) throw new Error(`Unknown project: ${entry.projectId}`);
   }
+  if (snapshot.business) {
+    const b = snapshot.business;
+    const customers = uniqueById(b.customers, 'customer');
+    uniqueById(b.contracts, 'contract');
+    const tasks = new Map(snapshot.tasks.map(t => [t.id, t]));
+    const routineDepartments = new Set<string>();
+    for (const routine of b.routines) {
+      const task = tasks.get(routine.taskId);
+      if (!task || task.department !== routine.department || routineDepartments.has(routine.department)
+        || b.lastDay === null || routine.day > b.lastDay) throw new Error('Invalid routine');
+      routineDepartments.add(routine.department);
+    }
+    const bills = new Set<string>();
+    for (const bill of b.unpaid) {
+      const key = bill.day + '-' + bill.category;
+      if (bills.has(key) || b.lastDay === null || bill.day >= b.lastDay) throw new Error('Invalid unpaid bill');
+      bills.add(key);
+    }
+    const linked = new Set<string>();
+    for (const c of b.contracts) {
+      if (!customers.has(c.customerId) || !projects.has(c.projectId)) throw new Error('Invalid contract reference');
+      const approved = c.status === 'active' || c.status === 'completed';
+      if (c.taskIds.length !== (approved ? c.requirements.length : 0)) throw new Error('Invalid contract tasks');
+      c.taskIds.forEach((id,i) => {
+        const task = tasks.get(id);
+        if (!task || linked.has(id) || task.projectId !== c.projectId || task.department !== c.requirements[i].department
+          || (c.status === 'completed' && task.status !== 'completed')) throw new Error('Invalid contract task');
+        linked.add(id);
+      });
+      const income = snapshot.ledger.find(e => e.id === 'income-' + c.id);
+      if (c.status === 'completed' ? !income || income.kind !== 'revenue' || income.amountVnd !== c.valueVnd
+        || income.projectId !== c.projectId : !!income) throw new Error('Invalid contract settlement');
+    }
+  }
   summarizeLedger(snapshot.ledger);
   return snapshot;
 }
@@ -39,6 +74,7 @@ export function parseCompanySnapshot(input: unknown): CompanySnapshot {
 const foundationProject = { id: 'world-v01', name: 'AI Company World 3D V0.1', department: 'operations' } as const;
 
 export class CompanyService {
+  readonly business: BusinessEngine;
   readonly staff: Omit<StaffDirectory, 'update'>;
   readonly tasks: TaskManager;
   readonly projects: ProjectDirectory;
@@ -63,6 +99,7 @@ export class CompanyService {
     });
     this.#ledger = snapshot.ledger;
     this.finance = new CompanyLedger(this.#ledger, (id) => this.projects.require(id));
+    this.business = new BusinessEngine(this, snapshot.business);
   }
 
   static create(agents: readonly AgentEntity[]): CompanyService {
@@ -111,6 +148,7 @@ export class CompanyService {
       employees: this.staff.listEmployees(),
       projects: this.projects.list(),
       tasks: this.tasks.getAllTasks(),
+      business: this.business.snapshot(),
       ledger: structuredClone(this.#ledger),
     };
   }

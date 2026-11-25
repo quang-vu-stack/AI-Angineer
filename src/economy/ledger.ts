@@ -44,6 +44,21 @@ export class CompanyLedger {
     return { ...entry };
   }
 
+  report(period: 'day' | 'week' | 'month', index: number) {
+    if (!Number.isSafeInteger(index) || index < 1) throw new Error('Invalid report period');
+    const length = { day: 1, week: 7, month: 30 }[period];
+    const fromDay = (index - 1) * length + 1, toDay = index * length;
+    let capitalVnd = 0, revenueVnd = 0, expensesVnd = 0, undatedEntries = 0;
+    for (const entry of this.entries) {
+      if (entry.simDay === undefined) { undatedEntries++; continue; }
+      if (entry.simDay < fromDay || entry.simDay > toDay) continue;
+      if (entry.kind === 'expense') expensesVnd += entry.amountVnd;
+      else if (entry.kind === 'revenue') revenueVnd += entry.amountVnd;
+      else capitalVnd += entry.amountVnd;
+    }
+    return { fromDay, toDay, capitalVnd, revenueVnd, expensesVnd, operatingProfitVnd: revenueVnd - expensesVnd, undatedEntries };
+  }
+
   summary(): FinanceSummary {
     return summarizeLedger(this.entries);
   }

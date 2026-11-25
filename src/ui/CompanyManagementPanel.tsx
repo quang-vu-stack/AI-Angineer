@@ -1,3 +1,4 @@
+import { BusinessPanel } from './BusinessPanel';
 import React, { useMemo, useState } from 'react';
 import { X, Users, Wallet, FolderKanban, CheckSquare, Plus } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
@@ -5,7 +6,7 @@ import { DEPARTMENT_META } from '../agents/roster';
 import type { DepartmentId } from '../agents/types';
 import type { LedgerEntry, ManagedTask } from '../types/company';
 
-type ManagementTab = 'hr' | 'finance' | 'projects' | 'tasks';
+type ManagementTab = 'hr' | 'finance' | 'projects' | 'tasks' | 'business';
 
 function formatVnd(amount: number): string {
   return `${new Intl.NumberFormat('vi-VN').format(amount)} ₫`;
@@ -103,6 +104,7 @@ export const CompanyManagementPanel: React.FC = () => {
         kind: ledgerKind,
         amountVnd: amount,
         description: ledgerDesc.trim(),
+        simDay: useGameStore.getState().day,
         recordedAt: new Date().toISOString(),
         projectId: selectedLedgerProject || null,
       });
@@ -202,6 +204,7 @@ export const CompanyManagementPanel: React.FC = () => {
         </div>
 
         <div className="mgmt-tabs">
+          <button className="mgmt-tab" onClick={() => { setTab('business'); setFeedback(null); }}>Kinh doanh</button>
           <button
             className={`mgmt-tab ${tab === 'hr' ? 'active' : ''}`}
             onClick={() => {
@@ -251,6 +254,7 @@ export const CompanyManagementPanel: React.FC = () => {
         )}
 
         <div className="mgmt-body">
+          {tab === 'business' && <BusinessPanel company={company} changed={notifyCompanyChange} />}
           {/* TAB 1: NHÂN SỰ (HR) */}
           {tab === 'hr' && (
             <div className="mgmt-section" data-testid="mgmt-content-hr">

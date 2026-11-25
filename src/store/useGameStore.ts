@@ -187,6 +187,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   tickSimulation: (realDeltaSec) => {
     const state = get();
     if (state.isPaused || !Number.isFinite(realDeltaSec) || realDeltaSec <= 0) return;
+    const completions = state.company.tasks.completions;
     const taskRevision = state.company.tasks.revision;
     const res = stepSimulation(
       state.agents,
@@ -201,17 +202,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state.coordination,
       registeredTasks ? undefined : state.company.tasks,
     );
+    const businessTick = !registeredTasks && (state.company.business.needsStart || completions !== state.company.tasks.completions || res.day !== state.day
+      || Math.floor(res.simMinutes) !== Math.floor(state.simMinutes));
+    if (businessTick) state.company.business.advance(res.day);
     syncAgentTasks(res.agents, state.company);
     set({
       agents: res.agents,
       simMinutes: res.simMinutes,
       day: res.day,
-      companyVersion: state.companyVersion + (taskRevision === state.company.tasks.revision ? 0 : 1),
+      companyVersion: state.companyVersion + (businessTick || taskRevision !== state.company.tasks.revision ? 1 : 0),
     });
   },
 
   notifyCompanyChange: () => {
     const state = get();
+    state.company.business.advance(state.day);
     set({
       agents: syncCompanyAgents(state.agents, state.company),
       companyVersion: state.companyVersion + 1,
@@ -290,7 +295,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const savedAtIso = new Date().toISOString();
     try {
       const saveRevision = await saveGameToIndexedDB({
-        version: '0.2.0',
+        version: '0.3.0',
         savedAtIso,
         day: s.day,
         simMinutes: s.simMinutes,

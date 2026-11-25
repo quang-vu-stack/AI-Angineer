@@ -29,6 +29,7 @@ export interface ManagedTask extends CompanyTask {
 export type NewTask = Omit<ManagedTask, 'status' | 'progress'>;
 
 export interface LedgerEntry {
+  simDay?: number;
   id: string;
   kind: 'capital' | 'revenue' | 'expense';
   amountVnd: number;
@@ -39,6 +40,7 @@ export interface LedgerEntry {
 
 export interface CompanySnapshot {
   schemaVersion: 1;
+  business?: import('./companySchema').BusinessState;
   currency: 'VND';
   departments: Department[];
   employees: Employee[];

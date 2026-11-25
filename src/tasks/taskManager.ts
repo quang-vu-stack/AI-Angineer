@@ -28,6 +28,8 @@ export function validateTaskProgress(task: ManagedTask): void {
 
 export class TaskManager implements ITaskManager {
   #revision = 0;
+  #completions = 0;
+  get completions(): number { return this.#completions; }
   readonly #tasks: Map<string, ManagedTask>;
   readonly #employee: (id: string) => Employee;
   readonly #validateScope: (task: ManagedTask) => void;
@@ -108,6 +110,7 @@ export class TaskManager implements ITaskManager {
   }
 
   private write(task: ManagedTask): void {
+    if (task.status === 'completed') this.#completions++;
     this.#tasks.set(task.id, task);
     this.#revision++;
   }
