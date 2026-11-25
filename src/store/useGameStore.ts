@@ -129,6 +129,29 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
   };
 }
 
+function syncAgentTasks(agents: AgentEntity[], company: CompanyService): void {
+  if (registeredTasks) return;
+  for (const agent of agents) {
+    const task = company.tasks.getDisplayTask(agent.id);
+    agent.currentTask = task?.title ?? '';
+    agent.taskProgress = Math.round(task?.progress ?? 0);
+  }
+}
+
+function syncCompanyAgents(agents: AgentEntity[], company: CompanyService): AgentEntity[] {
+  const departments = new Map(company.staff.listDepartments().map((department) => [department.id, department.name]));
+  const synced = agents.map((agent) => {
+    const employee = company.staff.getEmployee(agent.id);
+    return {
+      ...agent,
+      department: employee.department,
+      departmentLabel: departments.get(employee.department) ?? agent.departmentLabel,
+    };
+  });
+  syncAgentTasks(synced, company);
+  return synced;
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   company: CompanyService.create(initialAgents),
   coordination: new Coordination(),
@@ -164,6 +187,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   tickSimulation: (realDeltaSec) => {
     const state = get();
     if (state.isPaused || !Number.isFinite(realDeltaSec) || realDeltaSec <= 0) return;
+    const taskRevision = state.company.tasks.revision;
     const res = stepSimulation(
       state.agents,
       state.simMinutes,
@@ -177,41 +201,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state.coordination,
       registeredTasks ? undefined : state.company.tasks,
     );
-    let taskChanged = false;
-    if (!registeredTasks) {
-      for (const agent of res.agents) {
-        const task = state.company.tasks.getDisplayTask(agent.id);
-        const nextTitle = task?.title ?? '';
-        const nextProgress = Math.round(task?.progress ?? 0);
-        if (agent.currentTask !== nextTitle || agent.taskProgress !== nextProgress) {
-          taskChanged = true;
-        }
-        agent.currentTask = nextTitle;
-        agent.taskProgress = nextProgress;
-      }
-    }
+    syncAgentTasks(res.agents, state.company);
     set({
       agents: res.agents,
       simMinutes: res.simMinutes,
       day: res.day,
-      companyVersion: taskChanged ? state.companyVersion + 1 : state.companyVersion,
+      companyVersion: state.companyVersion + (taskRevision === state.company.tasks.revision ? 0 : 1),
     });
   },
 
   notifyCompanyChange: () => {
     const state = get();
-    const syncedAgents = state.agents.map((agent) => {
-      const emp = state.company.staff.getEmployee(agent.id);
-      const task = state.company.tasks.getDisplayTask(agent.id);
-      return {
-        ...agent,
-        department: emp.department,
-        currentTask: task?.title ?? '',
-        taskProgress: Math.round(task?.progress ?? 0),
-      };
-    });
     set({
-      agents: syncedAgents,
+      agents: syncCompanyAgents(state.agents, state.company),
       companyVersion: state.companyVersion + 1,
     });
   },
@@ -328,7 +330,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const company = saved.company === undefined
         ? CompanyService.create(saved.agents)
         : CompanyService.restore(saved.company);
-      for (const agent of initialAgents) company.staff.getEmployee(agent.id);
+      const agents = syncCompanyAgents(saved.agents, company);
       const ai = saved.ai === undefined ? undefined : parseAISnapshot(saved.ai, ids);
       memorySystem.importAll(ai?.memories ?? []);
       relationshipSystem.importAll?.(ai?.relationships ?? []);
@@ -338,7 +340,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         companyVersion: get().companyVersion + 1,
         saveRevision,
         persistenceError: null,
-        agents: saved.agents,
+        agents,
         day: saved.day,
         simMinutes: saved.simMinutes,
         speed: (SPEED_OPTIONS.includes(saved.speed as SpeedOption) ? saved.speed : 1) as SpeedOption,
