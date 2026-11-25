@@ -5,7 +5,6 @@ import {
   StubAIBrain,
   StubMemorySystem,
   StubRelationshipSystem,
-  StubTaskManager,
 } from '../ai/stubAdapter';
 import type {
   IAIBrain,
@@ -13,13 +12,14 @@ import type {
   IRelationshipSystem,
   ITaskManager,
 } from '../ai/interfaces';
+import { CompanyService } from '../company/companyService';
 import { stepSimulation } from '../simulation/simulationEngine';
 import { findPathToWaypoint } from '../navigation/pathfinder';
 import { OFFICE_ROOMS } from '../world/officeLayout';
 import type { PerfStats, QualityLevel } from '../services/performanceMonitor';
 import {
   clearSavedGame,
-  loadGameFromIndexedDB,
+  loadGameSlot,
   saveGameToIndexedDB,
 } from '../services/indexedDbService';
 
@@ -34,7 +34,7 @@ interface CameraFocusTarget {
 const initialAgents = createInitialAgents();
 let brain: IAIBrain = new StubAIBrain();
 let memorySystem: IMemorySystem = new StubMemorySystem();
-let taskManager: ITaskManager = new StubTaskManager();
+let registeredTasks: ITaskManager | undefined;
 let relationshipSystem: IRelationshipSystem = new StubRelationshipSystem();
 
 /**
@@ -49,11 +49,26 @@ export function registerAISystems(systems: {
 }): void {
   if (systems.brain) brain = systems.brain;
   if (systems.memory) memorySystem = systems.memory;
-  if (systems.tasks) taskManager = systems.tasks;
+  if (systems.tasks) registeredTasks = systems.tasks;
   if (systems.relationships) relationshipSystem = systems.relationships;
 }
 
+let pendingPersistence = Promise.resolve();
+
+function queuePersistence(action: () => Promise<void>): Promise<void> {
+  const result = pendingPersistence.then(action);
+  pendingPersistence = result.catch(() => undefined);
+  return result;
+}
+
+function persistenceMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 interface GameStore {
+  company: CompanyService;
+  saveRevision: number | null;
+  persistenceError: string | null;
   agents: AgentEntity[];
   day: number;
   simMinutes: number; // Start at 08:30 (510)
@@ -85,7 +100,27 @@ interface GameStore {
   resetSimulation: () => Promise<void>;
 }
 
+function freshSimulation(saveRevision: number | null): Partial<GameStore> {
+  const agents = createInitialAgents();
+  return {
+    agents,
+    company: CompanyService.create(agents),
+    saveRevision,
+    persistenceError: null,
+    day: 1,
+    simMinutes: 8 * 60 + 30,
+    isPaused: false,
+    speed: 1,
+    selectedAgentId: null,
+    cameraFocusTarget: null,
+    lastSavedAt: null,
+  };
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
+  company: CompanyService.create(initialAgents),
+  saveRevision: null,
+  persistenceError: null,
   agents: initialAgents,
   day: 1,
   simMinutes: 8 * 60 + 30,
@@ -101,7 +136,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   tickSimulation: (realDeltaSec) => {
     const state = get();
-    if (state.isPaused) return;
+    if (state.isPaused || realDeltaSec <= 0) return;
     const res = stepSimulation(
       state.agents,
       state.simMinutes,
@@ -110,9 +145,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state.speed,
       brain,
       memorySystem,
-      taskManager,
+      registeredTasks ?? state.company.tasks,
       relationshipSystem
     );
+    // Mirror the backend's current task in the existing inspector, including manual reassignment.
+    if (!registeredTasks) {
+      for (const agent of res.agents) {
+        const task = state.company.tasks.getDisplayTask(agent.id);
+        agent.currentTask = task?.title ?? '';
+        agent.taskProgress = Math.round(task?.progress ?? 0);
+      }
+    }
     set({
       agents: res.agents,
       simMinutes: res.simMinutes,
@@ -178,51 +221,65 @@ export const useGameStore = create<GameStore>((set, get) => ({
   updatePerfStats: (perf) => set({ perf }),
   setWebGLError: (webglError) => set({ webglError }),
 
-  saveNow: async () => {
+  saveNow: () => queuePersistence(async () => {
     const s = get();
     const savedAtIso = new Date().toISOString();
-    await saveGameToIndexedDB({
-      version: '0.1.0',
-      savedAtIso,
-      day: s.day,
-      simMinutes: s.simMinutes,
-      speed: s.speed,
-      quality: s.quality,
-      agents: s.agents,
-    });
-    set({ lastSavedAt: savedAtIso });
-  },
-
-  hydrateFromIndexedDB: async () => {
     try {
-      const saved = await loadGameFromIndexedDB();
-      if (saved && Array.isArray(saved.agents) && saved.agents.length === 20) {
-        set({
-          agents: saved.agents,
-          day: saved.day,
-          simMinutes: saved.simMinutes,
-          speed: (SPEED_OPTIONS.includes(saved.speed as SpeedOption)
-            ? saved.speed
-            : 1) as SpeedOption,
-          quality: saved.quality ?? 'medium',
-          lastSavedAt: saved.savedAtIso,
-        });
-      }
-    } catch {
-      // Non-fatal: fallback to clean V0.1 initial state
+      const saveRevision = await saveGameToIndexedDB({
+        version: '0.1.0',
+        savedAtIso,
+        day: s.day,
+        simMinutes: s.simMinutes,
+        speed: s.speed,
+        quality: s.quality,
+        agents: s.agents,
+        company: s.company.snapshot(),
+      }, s.saveRevision);
+      set({ lastSavedAt: savedAtIso, saveRevision, persistenceError: null });
+    } catch (error) {
+      set({ persistenceError: persistenceMessage(error) });
     }
-  },
+  }),
 
-  resetSimulation: async () => {
-    await clearSavedGame().catch(() => undefined);
-    set({
-      agents: createInitialAgents(),
-      day: 1,
-      simMinutes: 8 * 60 + 30,
-      isPaused: false,
-      speed: 1,
-      selectedAgentId: null,
-      lastSavedAt: null,
-    });
-  },
+  hydrateFromIndexedDB: () => queuePersistence(async () => {
+    try {
+      const { state: saved, revision: saveRevision } = await loadGameSlot();
+      if (!saved) {
+        set(get().saveRevision === saveRevision
+          ? { persistenceError: null }
+          : freshSimulation(saveRevision));
+        return;
+      }
+      const ids = new Set(saved.agents?.map(({ id }) => id));
+      if (saved.agents?.length !== initialAgents.length || initialAgents.some(({ id }) => !ids.has(id))) {
+        throw new Error('Danh sách nhân vật trong bản lưu không hợp lệ.');
+      }
+      const company = saved.company === undefined
+        ? CompanyService.create(saved.agents)
+        : CompanyService.restore(saved.company);
+      for (const agent of initialAgents) company.staff.getEmployee(agent.id);
+      set({
+        company,
+        saveRevision,
+        persistenceError: null,
+        agents: saved.agents,
+        day: saved.day,
+        simMinutes: saved.simMinutes,
+        speed: (SPEED_OPTIONS.includes(saved.speed as SpeedOption) ? saved.speed : 1) as SpeedOption,
+        quality: saved.quality ?? 'medium',
+        lastSavedAt: saved.savedAtIso,
+      });
+    } catch (error) {
+      set({ persistenceError: persistenceMessage(error) });
+    }
+  }),
+
+  resetSimulation: () => queuePersistence(async () => {
+    try {
+      const saveRevision = await clearSavedGame(get().saveRevision);
+      set(freshSimulation(saveRevision));
+    } catch (error) {
+      set({ persistenceError: persistenceMessage(error) });
+    }
+  }),
 }));
