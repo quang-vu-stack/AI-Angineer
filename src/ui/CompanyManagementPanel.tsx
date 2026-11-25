@@ -43,26 +43,34 @@ export const CompanyManagementPanel: React.FC = () => {
 
   const snapshot = useMemo(() => {
     void companyVersion;
-    return company.snapshot();
-  }, [company, companyVersion]);
+    return open ? company.snapshot() : null;
+  }, [company, companyVersion, open]);
 
   const financeSummary = useMemo(() => {
     void companyVersion;
-    return company.finance.summary();
-  }, [company, companyVersion]);
+    return open ? company.finance.summary() : null;
+  }, [company, companyVersion, open]);
 
   const projectKpis = useMemo(() => {
-    void companyVersion;
     const nowIso = new Date().toISOString();
-    return snapshot.projects.map((project) => ({
+    return snapshot?.projects.map((project) => ({
       project,
       kpi: company.projectKpi(project.id, nowIso),
-    }));
-  }, [company, companyVersion, snapshot.projects]);
+    })) ?? [];
+  }, [company, snapshot]);
 
   const agentById = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents]);
 
-  if (!open) return null;
+  if (!snapshot || !financeSummary) return null;
+
+  const selectedLedgerProject = snapshot.projects.find((p) => p.id === ledgerProjectId)?.id ?? '';
+  const selectedTaskProject = snapshot.projects.find((p) => p.id === newTaskProjectId)?.id
+    ?? snapshot.projects[0]?.id ?? '';
+  const taskAssignees = snapshot.employees.filter((employee) =>
+    employee.department === newTaskDept && employee.availability === 'active',
+  );
+  const selectedTaskAssignee = taskAssignees.find(({ id }) => id === newTaskAssignee)?.id ?? '';
+  const employeeById = new Map(snapshot.employees.map((employee) => [employee.id, employee]));
 
   const showError = (err: unknown) => {
     setFeedback({ kind: 'err', text: err instanceof Error ? err.message : String(err) });
@@ -96,7 +104,7 @@ export const CompanyManagementPanel: React.FC = () => {
         amountVnd: amount,
         description: ledgerDesc.trim(),
         recordedAt: new Date().toISOString(),
-        projectId: ledgerProjectId || null,
+        projectId: selectedLedgerProject || null,
       });
       notifyCompanyChange();
       setLedgerAmount('');
@@ -128,14 +136,14 @@ export const CompanyManagementPanel: React.FC = () => {
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const projectId = newTaskProjectId || snapshot.projects[0]?.id;
+      const projectId = selectedTaskProject;
       if (!projectId) throw new Error('Chưa có dự án nào để gán nhiệm vụ.');
       if (!newTaskTitle.trim()) throw new Error('Vui lòng nhập tiêu đề nhiệm vụ.');
       company.tasks.create({
         id: `task-${Date.now().toString(36)}`,
         title: newTaskTitle.trim(),
         department: newTaskDept,
-        assignedAgentId: newTaskAssignee || null,
+        assignedAgentId: selectedTaskAssignee || null,
         priority: newTaskPriority,
         projectId,
         dueAt: null,
@@ -344,6 +352,7 @@ export const CompanyManagementPanel: React.FC = () => {
 
               <form className="mgmt-form" onSubmit={handleRecordLedger}>
                 <select
+                  aria-label="Loại giao dịch"
                   value={ledgerKind}
                   onChange={(e) => setLedgerKind(e.target.value as LedgerEntry['kind'])}
                   data-testid="ledger-kind-select"
@@ -368,7 +377,7 @@ export const CompanyManagementPanel: React.FC = () => {
                   data-testid="ledger-desc-input"
                 />
                 <select
-                  value={ledgerProjectId}
+                  value={selectedLedgerProject}
                   onChange={(e) => setLedgerProjectId(e.target.value)}
                 >
                   <option value="">Chung công ty</option>
@@ -492,7 +501,8 @@ export const CompanyManagementPanel: React.FC = () => {
                   ))}
                 </select>
                 <select
-                  value={newTaskProjectId || snapshot.projects[0]?.id || ''}
+                  aria-label="Dự án của nhiệm vụ"
+                  value={selectedTaskProject}
                   onChange={(e) => setNewTaskProjectId(e.target.value)}
                 >
                   {snapshot.projects.map((p) => (
@@ -502,13 +512,12 @@ export const CompanyManagementPanel: React.FC = () => {
                   ))}
                 </select>
                 <select
-                  value={newTaskAssignee}
+                  aria-label="Người phụ trách nhiệm vụ mới"
+                  value={selectedTaskAssignee}
                   onChange={(e) => setNewTaskAssignee(e.target.value)}
                 >
                   <option value="">Chưa giao</option>
-                  {snapshot.employees
-                    .filter((e) => e.department === newTaskDept && e.availability === 'active')
-                    .map((e) => (
+                  {taskAssignees.map((e) => (
                       <option key={e.id} value={e.id}>
                         {e.name}
                       </option>
@@ -564,19 +573,23 @@ export const CompanyManagementPanel: React.FC = () => {
                         </td>
                         <td>{DEPARTMENT_META[task.department]?.label}</td>
                         <td>
-                          <select
-                            className="mgmt-inline-select"
-                            value={task.assignedAgentId ?? ''}
-                            disabled={task.status === 'completed'}
-                            onChange={(e) => handleTaskReassign(task.id, e.target.value)}
-                          >
-                            <option value="">Chưa giao</option>
-                            {eligibleEmployees.map((e) => (
-                              <option key={e.id} value={e.id}>
-                                {e.name}
-                              </option>
-                            ))}
-                          </select>
+                          {task.status === 'completed' ? (
+                            task.assignedAgentId && employeeById.get(task.assignedAgentId)?.name
+                          ) : (
+                            <select
+                              aria-label={`Người phụ trách: ${task.title}`}
+                              className="mgmt-inline-select"
+                              value={task.assignedAgentId ?? ''}
+                              onChange={(e) => handleTaskReassign(task.id, e.target.value)}
+                            >
+                              <option value="">Chưa giao</option>
+                              {eligibleEmployees.map((e) => (
+                                <option key={e.id} value={e.id}>
+                                  {e.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </td>
                         <td>{Math.round(task.progress)}%</td>
                         <td>

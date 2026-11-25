@@ -27,6 +27,7 @@ export function validateTaskProgress(task: ManagedTask): void {
 }
 
 export class TaskManager implements ITaskManager {
+  #revision = 0;
   readonly #tasks: Map<string, ManagedTask>;
   readonly #employee: (id: string) => Employee;
   readonly #validateScope: (task: ManagedTask) => void;
@@ -37,12 +38,14 @@ export class TaskManager implements ITaskManager {
     this.#validateScope = validateScope;
   }
 
+  get revision(): number { return this.#revision; }
+
   create(input: NewTask): ManagedTask {
     const task = taskSchema.parse({ ...input, status: 'queued', progress: 0 });
     if (this.#tasks.has(task.id)) throw new Error(`Duplicate task: ${task.id}`);
     this.#validateScope(task);
     this.validateAssignee(task);
-    this.#tasks.set(task.id, task);
+    this.write(task);
     return { ...task };
   }
 
@@ -64,7 +67,7 @@ export class TaskManager implements ITaskManager {
     if (current.status === 'completed') throw new Error('Completed tasks cannot be reassigned');
     const updated = { ...current, assignedAgentId: agentId };
     this.validateAssignee(updated);
-    this.#tasks.set(taskId, updated);
+    this.write(updated);
     return { ...updated };
   }
 
@@ -74,7 +77,7 @@ export class TaskManager implements ITaskManager {
     if (!transitions[current.status].includes(status)) throw new Error(`Invalid task transition: ${current.status} -> ${status}`);
     const updated = { ...current, status, progress: status === 'completed' ? 100 : current.progress };
     this.validateAssignee(updated);
-    this.#tasks.set(taskId, updated);
+    this.write(updated);
     return { ...updated };
   }
 
@@ -100,8 +103,13 @@ export class TaskManager implements ITaskManager {
       || !Number.isFinite(deltaProgress) || deltaProgress <= 0) return null;
     const progress = Math.min(100, current.progress + deltaProgress);
     const updated: ManagedTask = { ...current, progress, status: progress === 100 ? 'completed' : 'in_progress' };
-    this.#tasks.set(updated.id, updated);
+    this.write(updated);
     return { ...updated };
+  }
+
+  private write(task: ManagedTask): void {
+    this.#tasks.set(task.id, task);
+    this.#revision++;
   }
 
   private findRunnableTask(agentId: string): ManagedTask | undefined {
