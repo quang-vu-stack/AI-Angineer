@@ -156,6 +156,7 @@ export const OfficeScene: React.FC = () => {
   const selectAgent = useGameStore((s) => s.selectAgent);
   const quality = useGameStore((s) => s.quality);
   const showBubbles = useGameStore((s) => s.showSpeechBubbles);
+  const managementPanelOpen = useGameStore((s) => s.managementPanelOpen);
   const setWebGLError = useGameStore((s) => s.setWebGLError);
 
   const qConfig = QUALITY_CONFIGS[quality];
@@ -188,8 +189,8 @@ export const OfficeScene: React.FC = () => {
         <fog attach="fog" args={['#0c1424', 40, 82]} />
 
         {/* Semi-Realistic 3-Point Office Lighting */}
-        <ambientLight intensity={0.48} color="#e2e8f0" />
-        <hemisphereLight args={['#dbeafe', '#1e293b', 0.58]} />
+        <ambientLight intensity={0.68} color="#f1f5f9" />
+        <hemisphereLight args={['#e0f2fe', '#334155', 0.72]} />
         <directionalLight
           position={[15, 25, 17]}
           intensity={1.35}
@@ -224,7 +225,7 @@ export const OfficeScene: React.FC = () => {
             agent={agent}
             isSelected={selectedAgentId === agent.id}
             onSelect={selectAgent}
-            showBubbles={showBubbles}
+            showBubbles={showBubbles && !managementPanelOpen}
           />
         ))}
 

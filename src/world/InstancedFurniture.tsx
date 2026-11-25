@@ -308,7 +308,7 @@ export const InstancedFurniture: React.FC<{ castShadow: boolean }> = ({ castShad
       {/* Ceiling Suspended LED Fixtures */}
       <instancedMesh ref={lightFrameRef} args={[undefined, undefined, CEILING_LIGHT_POSITIONS.length]}>
         <boxGeometry args={[2.32, 0.06, 0.42]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.5} metalness={0.5} />
+        <meshStandardMaterial color="#cbd5e1" emissive="#e0f2fe" emissiveIntensity={0.45} roughness={0.35} metalness={0.3} />
       </instancedMesh>
       <instancedMesh ref={lightBarRef} args={[undefined, undefined, CEILING_LIGHT_POSITIONS.length]}>
         <boxGeometry args={[2.18, 0.04, 0.3]} />

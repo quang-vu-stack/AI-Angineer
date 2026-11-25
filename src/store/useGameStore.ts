@@ -116,7 +116,7 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
     company: CompanyService.create(agents),
     coordination: new Coordination(),
     companyVersion: 0,
-    managementPanelOpen: false;
+    managementPanelOpen: false,
     saveRevision,
     persistenceError: null,
     day: 1,
@@ -177,6 +177,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state.coordination,
       registeredTasks ? undefined : state.company.tasks,
     );
+    let taskChanged = false;
+    if (!registeredTasks) {
+      for (const agent of res.agents) {
+        const task = state.company.tasks.getDisplayTask(agent.id);
+        const nextTitle = task?.title ?? '';
+        const nextProgress = Math.round(task?.progress ?? 0);
+        if (agent.currentTask !== nextTitle || agent.taskProgress !== nextProgress) {
+          taskChanged = true;
+        }
+        agent.currentTask = nextTitle;
+        agent.taskProgress = nextProgress;
+      }
+    }
+    set({
+      agents: res.agents,
+      simMinutes: res.simMinutes,
+      day: res.day,
+      companyVersion: taskChanged ? state.companyVersion + 1 : state.companyVersion,
+    });
+  },
+
   notifyCompanyChange: () => {
     const state = get();
     const syncedAgents = state.agents.map((agent) => {

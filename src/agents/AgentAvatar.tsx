@@ -678,6 +678,7 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = React.memo(
             center
             distanceFactor={14}
             occlude={false}
+            zIndexRange={[10, 0]}
             style={{ pointerEvents: 'none' }}
           >
             <div

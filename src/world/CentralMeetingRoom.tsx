@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
+
+const dummy = new THREE.Object3D();
 
 const MEETING_CHAIRS: Array<{ pos: [number, number, number]; rotY: number }> = [
   { pos: [-2.1, 0, -1.75], rotY: 0 },
@@ -23,7 +25,39 @@ export const CentralMeetingRoom: React.FC<{ castShadow: boolean }> = ({ castShad
   const agents = useGameStore((s) => s.agents);
   const day = useGameStore((s) => s.day);
 
-  // Create offscreen canvas + texture once for live project progress board
+  const seatRef = useRef<THREE.InstancedMesh>(null);
+  const backRef = useRef<THREE.InstancedMesh>(null);
+  const baseRef = useRef<THREE.InstancedMesh>(null);
+
+  useLayoutEffect(() => {
+    MEETING_CHAIRS.forEach((c, i) => {
+      const cos = Math.cos(c.rotY);
+      const sin = Math.sin(c.rotY);
+      const toWorld = (lx: number, ly: number, lz: number): [number, number, number] => [
+        c.pos[0] + lx * cos + lz * sin,
+        ly,
+        c.pos[2] - lx * sin + lz * cos,
+      ];
+
+      dummy.position.set(...toWorld(0, 0.44, 0));
+      dummy.rotation.set(0, c.rotY, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      seatRef.current?.setMatrixAt(i, dummy.matrix);
+
+      dummy.position.set(...toWorld(0, 0.72, -0.21));
+      dummy.updateMatrix();
+      backRef.current?.setMatrixAt(i, dummy.matrix);
+
+      dummy.position.set(...toWorld(0, 0.22, 0));
+      dummy.updateMatrix();
+      baseRef.current?.setMatrixAt(i, dummy.matrix);
+    });
+    if (seatRef.current) seatRef.current.instanceMatrix.needsUpdate = true;
+    if (backRef.current) backRef.current.instanceMatrix.needsUpdate = true;
+    if (baseRef.current) baseRef.current.instanceMatrix.needsUpdate = true;
+  }, []);
+
   const { canvas, texture } = useMemo(() => {
     const c = document.createElement('canvas');
     c.width = 1024;
@@ -40,7 +74,6 @@ export const CentralMeetingRoom: React.FC<{ castShadow: boolean }> = ({ castShad
     };
   }, [texture]);
 
-  // Compute real live metrics from Backend CompanyService (zero mock data)
   const metrics = useMemo(() => {
     const projects = company.projects.list();
     const allTasks = company.tasks.getAllTasks();
@@ -79,19 +112,16 @@ export const CentralMeetingRoom: React.FC<{ castShadow: boolean }> = ({ castShad
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Deep slate dashboard background
     const grad = ctx.createLinearGradient(0, 0, 1024, 512);
     grad.addColorStop(0, '#09111f');
     grad.addColorStop(1, '#0f1e36');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 512);
 
-    // Subtle border frame
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
     ctx.lineWidth = 4;
     ctx.strokeRect(12, 12, 1000, 488);
 
-    // Header bar
     ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 28px Segoe UI, sans-serif';
     ctx.fillText('TIẾN ĐỘ DỰ ÁN TRỰC TIẾP — PHÒNG HỌP TRUNG TÂM', 38, 60);
@@ -104,7 +134,6 @@ export const CentralMeetingRoom: React.FC<{ castShadow: boolean }> = ({ castShad
       92
     );
 
-    // Overall progress bar
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 22px Segoe UI, sans-serif';
     ctx.fillText(`Tiến độ tổng thể: ${metrics.avgProgress}%`, 38, 140);
@@ -118,7 +147,6 @@ export const CentralMeetingRoom: React.FC<{ castShadow: boolean }> = ({ castShad
     ctx.fillStyle = barGrad;
     ctx.fillRect(38, 154, barW, 28);
 
-    // 4 Real KPI Cards
     const cards = [
       { label: 'HOÀN THÀNH', value: `${metrics.completed}/${metrics.totalTasks}`, color: '#22c55e' },
       { label: 'ĐANG THỰC HIỆN', value: String(metrics.inProgress), color: '#38bdf8' },
@@ -142,7 +170,6 @@ export const CentralMeetingRoom: React.FC<{ castShadow: boolean }> = ({ castShad
       ctx.fillText(card.value, x + 14, 272);
     });
 
-    // Real Project List from Backend
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 18px Segoe UI, sans-serif';
     ctx.fillText('DANH SÁCH DỰ ÁN (DỮ LIỆU BACKEND)', 38, 330);
@@ -176,17 +203,15 @@ export const CentralMeetingRoom: React.FC<{ castShadow: boolean }> = ({ castShad
 
   return (
     <group>
-      {/* Conference Table — Walnut wood tabletop with chamfered dark edge & cable tray */}
+      {/* Conference Table */}
       <mesh position={[0, 0.74, 0]} castShadow={castShadow} receiveShadow>
         <boxGeometry args={[5.8, 0.09, 1.96]} />
-        <meshStandardMaterial color="#5c4033" roughness={0.38} metalness={0.08} />
+        <meshStandardMaterial color="#6e4b3a" roughness={0.38} metalness={0.08} />
       </mesh>
-      {/* Central aluminum cable tray & power hub */}
       <mesh position={[0, 0.79, 0]}>
         <boxGeometry args={[3.4, 0.02, 0.24]} />
         <meshStandardMaterial color="#475569" roughness={0.3} metalness={0.7} />
       </mesh>
-      {/* Table pedestal bases */}
       <mesh position={[-1.7, 0.36, 0]} castShadow={castShadow}>
         <boxGeometry args={[0.7, 0.7, 1.1]} />
         <meshStandardMaterial color="#1e293b" roughness={0.5} metalness={0.4} />
@@ -195,68 +220,42 @@ export const CentralMeetingRoom: React.FC<{ castShadow: boolean }> = ({ castShad
         <boxGeometry args={[0.7, 0.7, 1.1]} />
         <meshStandardMaterial color="#1e293b" roughness={0.5} metalness={0.4} />
       </mesh>
-      <mesh position={[0, 0.2, 0]}>
-        <boxGeometry args={[3.4, 0.08, 0.22]} />
-        <meshStandardMaterial color="#334155" roughness={0.4} metalness={0.6} />
-      </mesh>
 
-      {/* Tabletop conference pads & speakerphone */}
+      {/* Tabletop speakerphone */}
       <mesh position={[0, 0.81, 0]}>
         <cylinderGeometry args={[0.16, 0.19, 0.04, 12]} />
         <meshStandardMaterial color="#0f172a" roughness={0.35} metalness={0.6} />
       </mesh>
-      <mesh position={[0, 0.835, 0]}>
-        <ringGeometry args={[0.07, 0.095, 16]} />
-        <meshBasicMaterial color="#38bdf8" side={THREE.DoubleSide} />
-      </mesh>
 
-      {/* 8 Ergonomic Conference Chairs aligned with meeting_seat_1..8 */}
-      {MEETING_CHAIRS.map((c, idx) => (
-        <group key={idx} position={c.pos} rotation={[0, c.rotY, 0]}>
-          {/* Seat cushion */}
-          <mesh position={[0, 0.44, 0]} castShadow={castShadow}>
-            <boxGeometry args={[0.48, 0.07, 0.46]} />
-            <meshStandardMaterial color="#1e293b" roughness={0.72} />
-          </mesh>
-          {/* Ergonomic backrest (behind seated agent, -Z in local frame) */}
-          <mesh position={[0, 0.72, -0.21]} castShadow={castShadow}>
-            <boxGeometry args={[0.44, 0.5, 0.06]} />
-            <meshStandardMaterial color="#334155" roughness={0.65} />
-          </mesh>
-          {/* Chrome pedestal & base */}
-          <mesh position={[0, 0.22, 0]}>
-            <cylinderGeometry args={[0.04, 0.04, 0.42, 8]} />
-            <meshStandardMaterial color="#94a3b8" metalness={0.8} roughness={0.25} />
-          </mesh>
-          <mesh position={[0, 0.03, 0]}>
-            <cylinderGeometry args={[0.24, 0.24, 0.04, 8]} />
-            <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.35} />
-          </mesh>
-        </group>
-      ))}
+      {/* 8 Instanced Conference Chairs */}
+      <instancedMesh ref={seatRef} args={[undefined, undefined, MEETING_CHAIRS.length]} castShadow={castShadow}>
+        <boxGeometry args={[0.48, 0.07, 0.46]} />
+        <meshStandardMaterial color="#1e293b" roughness={0.72} />
+      </instancedMesh>
+      <instancedMesh ref={backRef} args={[undefined, undefined, MEETING_CHAIRS.length]} castShadow={castShadow}>
+        <boxGeometry args={[0.44, 0.5, 0.06]} />
+        <meshStandardMaterial color="#334155" roughness={0.65} />
+      </instancedMesh>
+      <instancedMesh ref={baseRef} args={[undefined, undefined, MEETING_CHAIRS.length]}>
+        <cylinderGeometry args={[0.04, 0.22, 0.42, 8]} />
+        <meshStandardMaterial color="#94a3b8" metalness={0.75} roughness={0.28} />
+      </instancedMesh>
 
-      {/* Large Live Project Progress Wall Display on West Glass Wall (X = -4.82) */}
+      {/* Live Project Progress Wall Display on West Glass Wall */}
       <group position={[-4.82, 1.72, 0]} rotation={[0, Math.PI / 2, 0]}>
-        {/* Aluminum display bezel */}
         <mesh castShadow={castShadow}>
           <boxGeometry args={[4.4, 2.25, 0.1]} />
           <meshStandardMaterial color="#0f172a" roughness={0.25} metalness={0.65} />
         </mesh>
-        {/* Dynamic CanvasTexture screen driven by real Backend data */}
         <mesh position={[0, 0, 0.06]}>
           <planeGeometry args={[4.16, 2.04]} />
           <meshStandardMaterial
             map={texture}
             emissiveMap={texture}
             emissive="#ffffff"
-            emissiveIntensity={0.65}
+            emissiveIntensity={0.75}
             roughness={0.2}
           />
-        </mesh>
-        {/* Wall mount bracket */}
-        <mesh position={[0, -1.22, -0.02]}>
-          <boxGeometry args={[1.4, 0.24, 0.08]} />
-          <meshStandardMaterial color="#334155" metalness={0.6} roughness={0.4} />
         </mesh>
       </group>
     </group>
