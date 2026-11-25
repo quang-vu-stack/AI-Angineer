@@ -1,0 +1,4 @@
+# Sprint 02 — Local AI Brain
+Based on backend commit d6ef35671cc35fa9552d35241f0330e7f1933781. Local utility rules select work, rest, nearby conversation or sitting. Memory holds up to 100 records per agent; relationships update symmetrically. Bootstrap preserves backend task manager injection. No paid API.
+Limitations: runtime-only memory and relationships (reset/save integration pending), one-sided scripted conversations, no autonomous meetings, no LLM. Existing simulation applies interaction immediately. Tests authored, not executed in this connector session.
+Next: persist AI state with game save/reset, synchronize dialogue and meeting participation, expose AI activity to UI, run typecheck/build/backend and browser tests.
