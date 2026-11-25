@@ -1,0 +1,3 @@
+# Sprint 04 — AI Brain V0.3 foundation
+Base a3a16bcc9115394e41bebd5a8dbca870e5c92a45 (CI success on RC1; physical GPU not verified).
+Stable ID-derived synthetic personality, deterministic task selection, fatigue-aware social selection, cross-department dialogue, cooldown across midnight, recent-partner penalty and task-memory deduplication. No persistent schema changes, API keys or new dependencies. Preserve existing coordination and business rules. Dialogue is template-based; no LLM or autonomous task creation yet. Next: backend generates validated recurring tasks and contract workloads, UI exposes personality and activity. New tests authored; execution pending CI.

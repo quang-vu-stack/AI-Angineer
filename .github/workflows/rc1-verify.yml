@@ -1,9 +1,10 @@
-name: V0.2 RC1 verification
+name: Game verification
 
 on:
   push:
     branches:
       - 'release/v0.2-rc1'
+      - 'feature/ai-brain-v03'
   workflow_dispatch:
 
 permissions:
