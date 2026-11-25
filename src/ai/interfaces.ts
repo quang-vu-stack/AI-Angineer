@@ -95,4 +95,6 @@ export interface IRelationshipSystem {
   getRelationship(agentA: string, agentB: string): RelationshipEdge;
   recordInteraction(agentA: string, agentB: string, affinityDelta: number, day: number): void;
   getTopCollaborators(agentId: string, limit?: number): RelationshipEdge[];
+  exportAll?(): RelationshipEdge[];
+  importAll?(records: RelationshipEdge[]): void;
 }

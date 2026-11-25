@@ -1,5 +1,6 @@
-import type { AgentEntity, AgentState } from '../agents/types';
+import type { AgentEntity } from '../agents/types';
 import type {
+  AgentIntent,
   IAIBrain,
   IMemorySystem,
   IRelationshipSystem,
@@ -8,6 +9,9 @@ import type {
 } from '../ai/interfaces';
 import { findPathToWaypoint } from '../navigation/pathfinder';
 import { clampOutsideObstacles } from '../navigation/collision';
+import type { TaskManager } from '../tasks/taskManager';
+import { simulationTime } from './coordination';
+import type { Coordination } from './coordination';
 
 const WALK_SPEED_MPS = 2.6;
 
@@ -26,35 +30,25 @@ export function stepSimulation(
   brain: IAIBrain,
   memory: IMemorySystem,
   taskManager: ITaskManager,
-  relationships: IRelationshipSystem
+  relationships: IRelationshipSystem,
+  coordination?: Coordination,
+  companyTasks?: TaskManager,
 ): SimulationTickResult {
   const simDeltaSec = realDeltaSec * speedMultiplier;
-  if (simDeltaSec <= 0) {
+  if (!Number.isFinite(simDeltaSec) || simDeltaSec <= 0) {
     return { agents, simMinutes, day };
   }
 
-  // 1 real second at 1x = 1 in-game minute
-  let nextMinutes = simMinutes + simDeltaSec;
-  let nextDay = day;
-  if (nextMinutes >= 1440) {
-    nextMinutes -= 1440;
-    nextDay += 1;
-  }
-
-  const snapshot: SimulationSnapshot = {
-    simMinutes: nextMinutes,
-    day: nextDay,
-    agents,
-    activeMeetingRoomId: null,
-  };
-
-  const nextAgents = agents.map((agent) => {
-    const a: AgentEntity = {
-      ...agent,
-      position: [...agent.position],
-      path: agent.path,
-    };
-
+  // 1 real second at 1x = 1 in-game minute.
+  const from = simulationTime(day, simMinutes);
+  const now = from + simDeltaSec;
+  const nextDay = Math.floor(now / 1440) + 1;
+  const nextMinutes = now % 1440;
+  const nextAgents = agents.map((agent): AgentEntity => ({
+    ...agent,
+    position: [...agent.position],
+  }));
+  for (const a of nextAgents) {
     // Update speech bubble timer
     if (a.speechRemainingSec > 0) {
       a.speechRemainingSec -= simDeltaSec;
@@ -63,7 +57,17 @@ export function stepSimulation(
         a.speechText = null;
       }
     }
+  }
+  coordination?.advance(nextAgents, now, memory, relationships, companyTasks);
+  const snapshot: SimulationSnapshot = {
+    simMinutes: nextMinutes,
+    day: nextDay,
+    agents,
+    activeMeetingRoomId: coordination?.meetingRoom ?? null,
+  };
+  const conversations: AgentIntent[] = [];
 
+  for (const a of nextAgents) {
     // Movement along waypoint path
     if (a.state === 'Walking' && a.path.length > 0 && a.pathIndex < a.path.length) {
       const target = a.path[a.pathIndex];
@@ -93,7 +97,12 @@ export function stepSimulation(
       }
     } else {
       // Update metrics based on current state
-      updateAgentMetrics(a, simDeltaSec, taskManager);
+      if (a.state === 'Working') coordination?.productivity.recordWork(from, simDeltaSec, a.productivity);
+      if (updateAgentMetrics(a, simDeltaSec, taskManager)) {
+        coordination?.productivity.count(nextDay, 'tasksCompleted');
+      }
+
+      if (coordination?.isReserved(a.id)) continue;
 
       a.stateTimerSec -= simDeltaSec;
       if (a.stateTimerSec <= 0) {
@@ -104,16 +113,23 @@ export function stepSimulation(
           taskManager,
           relationships
         );
-        if (intent) {
-          applyIntentToAgent(a, intent, nextMinutes, nextDay, memory, relationships);
-        } else {
+        if (!intent || intent.agentId !== a.id) {
           a.stateTimerSec = 10;
+        } else if (intent.interactWithAgentId) {
+          a.stateTimerSec = 10;
+          if (intent.targetState === 'Talking') conversations.push(intent);
+        } else {
+          applyIntentToAgent(a, intent);
         }
       }
     }
 
-    return a;
-  });
+  }
+
+  if (coordination) {
+    conversations.sort((a, b) => b.priority - a.priority || a.agentId.localeCompare(b.agentId));
+    for (const intent of conversations) coordination.startDialogue(intent, nextAgents, now);
+  }
 
   return {
     agents: nextAgents,
@@ -126,7 +142,7 @@ function updateAgentMetrics(
   a: AgentEntity,
   dt: number,
   taskManager: ITaskManager
-): void {
+): boolean {
   const factor = dt * 0.35;
   switch (a.state) {
     case 'Working': {
@@ -138,7 +154,7 @@ function updateAgentMetrics(
         a.taskProgress = Math.round(updated.progress);
         a.currentTask = updated.title;
       }
-      break;
+      return updated?.status === 'completed';
     }
     case 'Resting': {
       a.energy = clamp(a.energy + factor * 2.6);
@@ -167,38 +183,13 @@ function updateAgentMetrics(
     default:
       break;
   }
+  return false;
 }
 
-function applyIntentToAgent(
-  a: AgentEntity,
-  intent: {
-    targetState: AgentState;
-    targetWaypointId?: string;
-    speechText?: string;
-    speechDurationSec?: number;
-    interactWithAgentId?: string;
-  },
-  simMinutes: number,
-  day: number,
-  memory: IMemorySystem,
-  relationships: IRelationshipSystem
-): void {
+function applyIntentToAgent(a: AgentEntity, intent: AgentIntent): void {
   if (intent.speechText) {
     a.speechText = intent.speechText;
     a.speechRemainingSec = intent.speechDurationSec ?? 5;
-  }
-
-  if (intent.interactWithAgentId) {
-    relationships.recordInteraction(a.id, intent.interactWithAgentId, 2, day);
-    memory.addMemory({
-      agentId: a.id,
-      timestampSimMinutes: Math.floor(simMinutes),
-      day,
-      kind: 'conversation',
-      summary: `Trao đổi công việc với ${intent.interactWithAgentId}`,
-      importance: 4,
-      relatedAgentIds: [intent.interactWithAgentId],
-    });
   }
 
   if (intent.targetWaypointId) {

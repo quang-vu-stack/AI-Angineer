@@ -11,14 +11,15 @@ export class LocalBrain implements IAIBrain {
     if (hour < 8 || hour >= 18 || (hour >= 12 && hour < 13)) {
       return {...base,targetState:'Resting',priority:80};
     }
-    const task = tasks.getTasksForAgent(agent.id).find(t => t.status === 'in_progress') ??
-      tasks.getTasksForAgent(agent.id).filter(t=>t.status==='queued').sort((a,b)=>({high:3,medium:2,low:1}[b.priority]-{high:3,medium:2,low:1}[a.priority]))[0];
+    const assigned = tasks.getTasksForAgent(agent.id);
+    const task = assigned.find(t => t.status === 'in_progress') ??
+      assigned.filter(t=>t.status==='queued').sort((a,b)=>({high:3,medium:2,low:1}[b.priority]-{high:3,medium:2,low:1}[a.priority]))[0];
     if (task) {
       if (agent.state !== 'Working') memory.addMemory({agentId:agent.id,day:snapshot.day,timestampSimMinutes:Math.floor(snapshot.simMinutes),kind:'task',summary:'Bắt đầu hoặc tiếp tục: '+task.title,importance:6});
       return {...base,targetState:'Working',priority:70,taskTitle:task.title,speechText:agent.state==='Working'?undefined:'Đang xử lý: '+task.title,speechDurationSec:5};
     }
-    const recent = memory.getRecentMemories(agent.id, 10).some(m=>m.kind==='conversation' && m.day===snapshot.day && snapshot.simMinutes-m.timestampSimMinutes<45);
-    const colleagues = snapshot.agents.filter(a=>a.id!==agent.id && a.department===agent.department && (a.state==='Idle'||a.state==='Sitting'||a.state==='Talking') && Math.hypot(a.position[0]-agent.position[0],a.position[2]-agent.position[2])<3);
+    const recent = memory.getRecentMemories(agent.id, 10).some(m=>m.kind==='conversation' && m.day===snapshot.day && snapshot.simMinutes-m.timestampSimMinutes<45 && m.timestampSimMinutes<=snapshot.simMinutes);
+    const colleagues = snapshot.agents.filter(a=>a.id!==agent.id && a.department===agent.department && (a.state==='Idle'||a.state==='Sitting') && Math.hypot(a.position[0]-agent.position[0],a.position[2]-agent.position[2])<3);
     colleagues.sort((a,b)=>relationships.getRelationship(agent.id,b.id).affinity-relationships.getRelationship(agent.id,a.id).affinity || a.id.localeCompare(b.id));
     if (!recent && colleagues[0] && (agent.mood<75 || agent.numericIndex%3===0)) {
       const peer=colleagues[0];

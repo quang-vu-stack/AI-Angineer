@@ -1,5 +1,7 @@
 import type { AgentEntity } from '../agents/types';
 import { parseCompanySnapshot } from '../company/companyService';
+import { parseAISnapshot } from '../persistence/aiSnapshot';
+import type { AISnapshot } from '../persistence/aiSnapshot';
 import { SaveConflictError } from '../persistence/saveConflict';
 import type { CompanySnapshot } from '../types/company';
 import { revisionSchema } from '../types/companySchema';
@@ -19,6 +21,7 @@ export interface PersistedGameState {
   quality: QualityLevel;
   agents: AgentEntity[];
   company?: CompanySnapshot;
+  ai?: AISnapshot;
   revision?: number;
 }
 
@@ -93,6 +96,7 @@ export async function saveGameToIndexedDB(
 ): Promise<number> {
   const payload = structuredClone(state);
   if (payload.company !== undefined) payload.company = parseCompanySnapshot(payload.company);
+  if (payload.ai !== undefined) payload.ai = parseAISnapshot(payload.ai, payload.agents.map(({ id }) => id));
   return updateSave(expectedRevision, (store, revision) => {
     store.put({ ...payload, revision }, SAVE_KEY);
   });

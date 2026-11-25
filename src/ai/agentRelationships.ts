@@ -15,6 +15,16 @@ export class AgentRelationships implements IRelationshipSystem {
       this.edges.set(this.key(from,to), edge);
     }
   }
+  exportAll(): RelationshipEdge[] {
+    return [...this.edges.values()].map((edge) => ({ ...edge }));
+  }
+
+  importAll(records: RelationshipEdge[]): void {
+    this.edges = new Map(records.map((edge) => [
+      this.key(edge.fromAgentId, edge.toAgentId), { ...edge },
+    ]));
+  }
+
   getTopCollaborators(id: string, limit = 5): RelationshipEdge[] {
     return [...this.edges.values()].filter(e => e.fromAgentId === id).sort((a,b) => b.affinity+b.trust-a.affinity-a.trust).slice(0,Math.max(0,limit)).map(e=>({...e}));
   }

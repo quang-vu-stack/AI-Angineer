@@ -90,7 +90,14 @@ export class TaskManager implements ITaskManager {
   advanceTaskProgress(agentId: string, deltaProgress: number): ManagedTask | null {
     if (!Number.isFinite(deltaProgress) || deltaProgress <= 0) return null;
     const current = this.findRunnableTask(agentId);
-    if (!current) return null;
+    return current ? this.advanceTask(current.id, deltaProgress) : null;
+  }
+
+  advanceTask(taskId: string, deltaProgress: number): ManagedTask | null {
+    const current = this.#tasks.get(taskId);
+    if (!current || current.assignedAgentId === null
+      || (current.status !== 'queued' && current.status !== 'in_progress')
+      || !Number.isFinite(deltaProgress) || deltaProgress <= 0) return null;
     const progress = Math.min(100, current.progress + deltaProgress);
     const updated: ManagedTask = { ...current, progress, status: progress === 100 ? 'completed' : 'in_progress' };
     this.#tasks.set(updated.id, updated);

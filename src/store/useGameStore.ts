@@ -13,6 +13,8 @@ import type {
   ITaskManager,
 } from '../ai/interfaces';
 import { CompanyService } from '../company/companyService';
+import { parseAISnapshot } from '../persistence/aiSnapshot';
+import { Coordination, simulationTime } from '../simulation/coordination';
 import { stepSimulation } from '../simulation/simulationEngine';
 import { findPathToWaypoint } from '../navigation/pathfinder';
 import { OFFICE_ROOMS } from '../world/officeLayout';
@@ -67,6 +69,7 @@ function persistenceMessage(error: unknown): string {
 
 interface GameStore {
   company: CompanyService;
+  coordination: Coordination;
   saveRevision: number | null;
   persistenceError: string | null;
   agents: AgentEntity[];
@@ -83,6 +86,7 @@ interface GameStore {
   lastSavedAt: string | null;
 
   tickSimulation: (realDeltaSec: number) => void;
+  scheduleMeeting: (projectId: string) => boolean;
   togglePause: () => void;
   setPaused: (paused: boolean) => void;
   setSpeed: (speed: SpeedOption) => void;
@@ -105,6 +109,7 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
   return {
     agents,
     company: CompanyService.create(agents),
+    coordination: new Coordination(),
     saveRevision,
     persistenceError: null,
     day: 1,
@@ -119,6 +124,7 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   company: CompanyService.create(initialAgents),
+  coordination: new Coordination(),
   saveRevision: null,
   persistenceError: null,
   agents: initialAgents,
@@ -134,9 +140,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   webglError: null,
   lastSavedAt: null,
 
+  scheduleMeeting: (projectId) => {
+    const state = get();
+    if (registeredTasks) return false;
+    state.company.projects.require(projectId);
+    const agents = state.agents.map((agent) => ({ ...agent }));
+    const started = state.coordination.startMeeting(
+      agents, state.company.tasks, simulationTime(state.day, state.simMinutes), projectId,
+    );
+    if (started) set({ agents });
+    return started;
+  },
+
   tickSimulation: (realDeltaSec) => {
     const state = get();
-    if (state.isPaused || realDeltaSec <= 0) return;
+    if (state.isPaused || !Number.isFinite(realDeltaSec) || realDeltaSec <= 0) return;
     const res = stepSimulation(
       state.agents,
       state.simMinutes,
@@ -146,7 +164,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       brain,
       memorySystem,
       registeredTasks ?? state.company.tasks,
-      relationshipSystem
+      relationshipSystem,
+      state.coordination,
+      registeredTasks ? undefined : state.company.tasks,
     );
     // Mirror the backend's current task in the existing inspector, including manual reassignment.
     if (!registeredTasks) {
@@ -198,7 +218,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   commandAgent: (id, targetState, waypointId) => {
     set((s) => ({
       agents: s.agents.map((a) => {
-        if (a.id !== id) return a;
+        if (a.id !== id || s.coordination.isReserved(id)) return a;
         const targetWp =
           waypointId ??
           (targetState === 'Meeting'
@@ -226,7 +246,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const savedAtIso = new Date().toISOString();
     try {
       const saveRevision = await saveGameToIndexedDB({
-        version: '0.1.0',
+        version: '0.2.0',
         savedAtIso,
         day: s.day,
         simMinutes: s.simMinutes,
@@ -234,6 +254,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         quality: s.quality,
         agents: s.agents,
         company: s.company.snapshot(),
+        ai: {
+          schemaVersion: 1,
+          memories: memorySystem.exportAll(),
+          relationships: relationshipSystem.exportAll?.() ?? [],
+          coordination: s.coordination.snapshot(),
+        },
       }, s.saveRevision);
       set({ lastSavedAt: savedAtIso, saveRevision, persistenceError: null });
     } catch (error) {
@@ -245,9 +271,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     try {
       const { state: saved, revision: saveRevision } = await loadGameSlot();
       if (!saved) {
-        set(get().saveRevision === saveRevision
-          ? { persistenceError: null }
-          : freshSimulation(saveRevision));
+        if (get().saveRevision === saveRevision) set({ persistenceError: null });
+        else {
+          memorySystem.importAll([]);
+          relationshipSystem.importAll?.([]);
+          set(freshSimulation(saveRevision));
+        }
         return;
       }
       const ids = new Set(saved.agents?.map(({ id }) => id));
@@ -258,8 +287,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ? CompanyService.create(saved.agents)
         : CompanyService.restore(saved.company);
       for (const agent of initialAgents) company.staff.getEmployee(agent.id);
+      const ai = saved.ai === undefined ? undefined : parseAISnapshot(saved.ai, ids);
+      memorySystem.importAll(ai?.memories ?? []);
+      relationshipSystem.importAll?.(ai?.relationships ?? []);
       set({
         company,
+        coordination: new Coordination(ai?.coordination),
         saveRevision,
         persistenceError: null,
         agents: saved.agents,
@@ -277,6 +310,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resetSimulation: () => queuePersistence(async () => {
     try {
       const saveRevision = await clearSavedGame(get().saveRevision);
+      memorySystem.importAll([]);
+      relationshipSystem.importAll?.([]);
       set(freshSimulation(saveRevision));
     } catch (error) {
       set({ persistenceError: persistenceMessage(error) });
