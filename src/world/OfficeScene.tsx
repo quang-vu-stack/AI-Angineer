@@ -226,7 +226,7 @@ const CameraRig: React.FC = () => {
       }
     }
 
-    controlsRef.current.target.x = THREE.MathUtils.clamp(controlsRef.current.target.x, -17, 17);
+    controlsRef.current.target.x = THREE.MathUtils.clamp(controlsRef.current.target.x, -25, 17);
     controlsRef.current.target.z = THREE.MathUtils.clamp(controlsRef.current.target.z, -11, 11);
     controlsRef.current.target.y = THREE.MathUtils.clamp(controlsRef.current.target.y, 0, 2.5);
     controlsRef.current.update();
@@ -270,7 +270,7 @@ export const OfficeScene: React.FC = () => {
       <Canvas
         shadows={qConfig.shadows}
         dpr={qConfig.dpr}
-        camera={{ position: [0, 21, 24], fov: 44, near: 0.2, far: 140 }}
+        camera={{ position: [-4, 24, 27], fov: 45, near: 0.2, far: 160 }}
         gl={{
           antialias: qConfig.antialias,
           powerPreference: 'high-performance',
@@ -304,7 +304,7 @@ export const OfficeScene: React.FC = () => {
           shadow-mapSize-height={qConfig.shadowMapSize}
           shadow-bias={-0.0004}
           shadow-normalBias={0.025}
-          shadow-camera-left={-22}
+          shadow-camera-left={-28}
           shadow-camera-right={22}
           shadow-camera-top={18}
           shadow-camera-bottom={-18}

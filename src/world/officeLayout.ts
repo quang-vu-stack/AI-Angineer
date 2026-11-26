@@ -1,4 +1,5 @@
 import type { RoomId } from '../agents/types';
+import { HQ_MODULES } from './modules/hqModules';
 
 export interface RoomDefinition {
   id: RoomId;
@@ -92,6 +93,15 @@ export const OFFICE_ROOMS: RoomDefinition[] = [
     cameraTarget: [12.8, 0.7, 0],
     cameraOffset: [2, 8.5, 9.5],
   },
+  ...HQ_MODULES.map((m) => ({
+    id: m.id,
+    name: m.name,
+    bounds: m.bounds,
+    floorColor: m.floorColor,
+    accentColor: m.accentColor,
+    cameraTarget: m.cameraTarget,
+    cameraOffset: m.cameraOffset,
+  })),
 ];
 
 export interface DeskPlacement {

@@ -1,8 +1,25 @@
 import React from 'react';
-import { X, Briefcase, Coffee, Users, Video } from 'lucide-react';
+import { X, Briefcase, Coffee, Users, Video, GraduationCap } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
 import { DEPARTMENT_META } from '../agents/roster';
 import { personalityFor } from '../ai/agentPersonality';
+import { planCareer, type CareerGoal, type ExperienceLevel } from '../ai/careerPolicy';
+
+const LEVEL_META: Record<ExperienceLevel, { label: string; color: string }> = {
+  junior: { label: 'Junior', color: '#94a3b8' },
+  specialist: { label: 'Specialist', color: '#38bdf8' },
+  senior: { label: 'Senior', color: '#a78bfa' },
+  lead: { label: 'Lead', color: '#fbbf24' },
+};
+
+const GOAL_LABEL_VI: Record<CareerGoal, string> = {
+  deliver: 'Hoàn thành nhiệm vụ được giao',
+  recover: 'Phục hồi năng lượng & giảm áp lực',
+  off_shift: 'Ngoài giờ làm việc chính',
+  unblock: 'Tháo gỡ nhiệm vụ đang bị chặn',
+  mentor: 'Hướng dẫn & kèm cặp đồng nghiệp',
+  learn: 'Tự đào tạo & nâng cao kỹ năng',
+};
 
 const MetricBar: React.FC<{ label: string; value: number; color: string; suffix?: string }> = ({
   label,
@@ -30,6 +47,10 @@ const MetricBar: React.FC<{ label: string; value: number; color: string; suffix?
 export const AgentInspector: React.FC = () => {
   const selectedAgentId = useGameStore((s) => s.selectedAgentId);
   const agents = useGameStore((s) => s.agents);
+  const company = useGameStore((s) => s.company);
+  const companyVersion = useGameStore((s) => s.companyVersion);
+  const day = useGameStore((s) => s.day);
+  const simMinutes = useGameStore((s) => s.simMinutes);
   const followSelectedAgent = useGameStore((s) => s.followSelectedAgent);
   const toggleFollowSelectedAgent = useGameStore((s) => s.toggleFollowSelectedAgent);
   const selectAgent = useGameStore((s) => s.selectAgent);
@@ -38,10 +59,25 @@ export const AgentInspector: React.FC = () => {
   const agent = agents.find((a) => a.id === selectedAgentId);
   if (!agent) return null;
 
+  void companyVersion;
   const dept = DEPARTMENT_META[agent.department];
   const personality = personalityFor(agent.id);
   const stressThreshold = 70 + Math.round(personality.resilience / 10);
   const socialCooldownMin = 60 - Math.round(personality.sociability / 3);
+
+  // Strictly real career data from src/ai/careerPolicy.ts (zero fake XP)
+  const careerPlan = planCareer(
+    agent,
+    { simMinutes, day, agents, activeMeetingRoomId: null },
+    company.tasks.getAllTasks()
+  );
+  const profile = careerPlan.profile;
+  const levelInfo = LEVEL_META[profile.level];
+  const nextMilestoneXp = profile.experiencePoints + profile.pointsToNext;
+  const xpPercent =
+    profile.nextLevel === null || nextMilestoneXp <= 0
+      ? 100
+      : Math.min(100, Math.round((profile.experiencePoints / nextMilestoneXp) * 100));
 
   return (
     <aside className="panel-right" data-testid="agent-inspector">
@@ -70,6 +106,32 @@ export const AgentInspector: React.FC = () => {
         >
           <Video size={11} /> {followSelectedAgent ? 'Đang theo dõi' : 'Theo dõi'}
         </button>
+      </div>
+
+      <div className="inspector-section" data-testid="agent-career-profile">
+        <div className="section-label">Cấp độ & Mục tiêu nghề nghiệp</div>
+        <div className="inspector-badges" style={{ marginBottom: 6 }}>
+          <span
+            className="badge"
+            style={{ borderColor: levelInfo.color, color: levelInfo.color, fontWeight: 700 }}
+            data-testid="agent-career-level"
+          >
+            {levelInfo.label}
+          </span>
+          <span className="badge" data-testid="agent-career-xp">
+            {profile.experiencePoints} XP ({profile.completedTasks} xong)
+          </span>
+        </div>
+        <div className="metric-track" style={{ marginBottom: 5 }}>
+          <div
+            className="metric-fill"
+            style={{ width: `${xpPercent}%`, background: levelInfo.color }}
+          />
+        </div>
+        <div className="inspector-meta" data-testid="agent-career-goal">
+          Mục tiêu: {GOAL_LABEL_VI[careerPlan.goal]}
+          {profile.nextLevel ? ` • Còn ${profile.pointsToNext} XP lên ${LEVEL_META[profile.nextLevel].label}` : ' • Cấp cao nhất'}
+        </div>
       </div>
 
       <div className="inspector-section">
@@ -102,7 +164,7 @@ export const AgentInspector: React.FC = () => {
 
       <div className="inspector-section">
         <div className="section-label">Nhiệm vụ ({agent.taskProgress}%)</div>
-        <div className="task-box">{agent.currentTask}</div>
+        <div className="task-box">{agent.currentTask || 'Chưa có nhiệm vụ đang mở'}</div>
       </div>
 
       <div className="inspector-section">
@@ -127,6 +189,22 @@ export const AgentInspector: React.FC = () => {
           </button>
           <button className="hud-btn" onClick={() => commandAgent(agent.id, 'Resting')}>
             <Coffee size={13} /> Cà phê / Nghỉ
+          </button>
+          <button
+            className="hud-btn"
+            onClick={() =>
+              commandAgent(
+                agent.id,
+                'Talking',
+                profile.level === 'senior' || profile.level === 'lead'
+                  ? 'training_podium_spot'
+                  : agent.numericIndex % 2 === 0
+                    ? 'training_seat_1'
+                    : 'training_seat_2'
+              )
+            }
+          >
+            <GraduationCap size={13} /> Đào tạo
           </button>
         </div>
       </div>

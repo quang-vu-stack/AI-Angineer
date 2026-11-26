@@ -68,12 +68,24 @@ export const STATIC_OBSTACLES: ObstacleBox[] = [
   { id: 'meeting_table', minX: -2.95, maxX: 2.95, minZ: -1.02, maxZ: 1.02, category: 'table' },
   { id: 'coffee_table', minX: 10.75, maxX: 12.85, minZ: -0.43, maxZ: 0.43, category: 'table' },
   { id: 'coffee_bar', minX: 15.05, maxX: 16.15, minZ: -1.7, maxZ: 1.7, category: 'desk' },
+  // Upgraded CEO Suite & West HQ Wing obstacles
+  { id: 'ceo_credenza', minX: -12.3, maxX: -10.5, minZ: -11.48, maxZ: -10.92, category: 'desk' },
+  { id: 'ceo_vip_lounge', minX: -16.85, maxX: -15.75, minZ: -9.18, maxZ: -6.42, category: 'table' },
+  { id: 'reception_desk', minX: -23.0, maxX: -21.8, minZ: -1.65, maxZ: 1.65, category: 'desk' },
+  { id: 'boardroom_table', minX: -24.0, maxX: -20.4, minZ: -9.05, maxZ: -7.35, category: 'table' },
+  { id: 'training_podium', minX: -25.0, maxX: -24.2, minZ: 7.0, maxZ: 8.2, category: 'desk' },
+  { id: 'training_desk', minX: -22.8, maxX: -22.0, minZ: 6.35, maxZ: 8.85, category: 'desk' },
+  { id: 'interview_table', minX: -21.35, maxX: -19.85, minZ: 9.95, maxZ: 10.85, category: 'table' },
+  { id: 'wall_west_core_n', minX: -18.12, maxX: -17.88, minZ: -12.0, maxZ: -5.6, category: 'wall' },
+  { id: 'wall_west_core_s', minX: -18.12, maxX: -17.88, minZ: 5.6, maxZ: 12.0, category: 'wall' },
+  { id: 'wall_hq_div_n', minX: -26.0, maxX: -20.8, minZ: -4.18, maxZ: -4.02, category: 'wall' },
+  { id: 'wall_hq_div_s', minX: -26.0, maxX: -20.8, minZ: 4.02, maxZ: 4.18, category: 'wall' },
   ...buildDeskObstacles(),
   ...PARTITION_WALL_OBSTACLES,
 ];
 
 export function isPointInsideObstacle(x: number, z: number, radius = 0.24): boolean {
-  if (x < -17.45 || x > 17.45 || z < -11.45 || z > 11.45) return true;
+  if (x < -25.45 || x > 17.45 || z < -11.45 || z > 11.45) return true;
   for (const box of STATIC_OBSTACLES) {
     if (
       x > box.minX - radius &&
@@ -119,7 +131,7 @@ export function clampOutsideObstacles(
   z: number,
   radius = 0.26
 ): [number, number] {
-  let nx = Math.max(-17.4, Math.min(17.4, x));
+  let nx = Math.max(-25.4, Math.min(17.4, x));
   let nz = Math.max(-11.4, Math.min(11.4, z));
 
   for (let pass = 0; pass < 2; pass++) {

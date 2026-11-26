@@ -54,7 +54,7 @@ export const TopHUD: React.FC = () => {
       <div className="hud-brand">
         <div className="hud-title">AI COMPANY WORLD 3D</div>
         <div className="hud-subtitle">
-          V0.3 Living Office 2.0 • Ngày {day} • {formatClock(simMinutes)} ({getDayPhaseLabel(simMinutes)}) • Năng suất: {avgProductivity}%
+          V0.4 Company World 3D • Ngày {day} • {formatClock(simMinutes)} ({getDayPhaseLabel(simMinutes)}) • Năng suất: {avgProductivity}%
         </div>
       </div>
 

@@ -7,6 +7,7 @@ on:
       - 'feature/ai-brain-v03'
       - 'integration/v0.3'
       - 'feature/ai-brain-v04'
+      - 'integration/v0.4'
   workflow_dispatch:
 
 permissions:
