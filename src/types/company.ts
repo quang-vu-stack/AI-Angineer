@@ -31,7 +31,7 @@ export type NewTask = Omit<ManagedTask, 'status' | 'progress'>;
 export interface LedgerEntry {
   simDay?: number;
   id: string;
-  kind: 'capital' | 'revenue' | 'expense';
+  kind: 'capital' | 'revenue' | 'expense' | 'dividend';
   amountVnd: number;
   description: string;
   recordedAt: string;
@@ -40,6 +40,7 @@ export interface LedgerEntry {
 
 export interface CompanySnapshot {
   schemaVersion: 1;
+  corporate?: import('./corporate').CorporateState;
   business?: import('./companySchema').BusinessState;
   currency: 'VND';
   departments: Department[];

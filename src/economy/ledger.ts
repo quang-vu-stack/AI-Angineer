@@ -20,7 +20,7 @@ export function summarizeLedger(entries: readonly LedgerEntry[]): FinanceSummary
       case 'revenue': revenueVnd += entry.amountVnd; break;
       case 'expense': expensesVnd += entry.amountVnd; break;
     }
-    balanceVnd += entry.kind === 'expense' ? -entry.amountVnd : entry.amountVnd;
+    balanceVnd += entry.kind === 'expense' || entry.kind === 'dividend' ? -entry.amountVnd : entry.amountVnd;
     if (balanceVnd < 0) throw new Error('Insufficient funds');
     if (![capitalVnd, revenueVnd, expensesVnd, balanceVnd].every(Number.isSafeInteger)) {
       throw new Error('Ledger exceeds safe integer precision');
@@ -48,15 +48,16 @@ export class CompanyLedger {
     if (!Number.isSafeInteger(index) || index < 1) throw new Error('Invalid report period');
     const length = { day: 1, week: 7, month: 30 }[period];
     const fromDay = (index - 1) * length + 1, toDay = index * length;
-    let capitalVnd = 0, revenueVnd = 0, expensesVnd = 0, undatedEntries = 0;
+    let capitalVnd = 0, revenueVnd = 0, expensesVnd = 0, dividendsVnd = 0, undatedEntries = 0;
     for (const entry of this.entries) {
       if (entry.simDay === undefined) { undatedEntries++; continue; }
       if (entry.simDay < fromDay || entry.simDay > toDay) continue;
       if (entry.kind === 'expense') expensesVnd += entry.amountVnd;
       else if (entry.kind === 'revenue') revenueVnd += entry.amountVnd;
-      else capitalVnd += entry.amountVnd;
+      else if (entry.kind === 'capital') capitalVnd += entry.amountVnd;
+      else dividendsVnd += entry.amountVnd;
     }
-    return { fromDay, toDay, capitalVnd, revenueVnd, expensesVnd, operatingProfitVnd: revenueVnd - expensesVnd, undatedEntries };
+    return { fromDay, toDay, capitalVnd, revenueVnd, expensesVnd, dividendsVnd, netCashFlowVnd: capitalVnd - expensesVnd + (revenueVnd - dividendsVnd), operatingProfitVnd: revenueVnd - expensesVnd, undatedEntries };
   }
 
   summary(): FinanceSummary {

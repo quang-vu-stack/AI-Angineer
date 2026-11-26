@@ -1,3 +1,4 @@
+import { corporateSchema } from './corporate';
 import { z } from 'zod';
 import { DEPARTMENT_META } from '../agents/roster';
 import type { DepartmentId } from '../agents/types';
@@ -24,7 +25,7 @@ export const taskSchema = z.strictObject({
   projectId: idSchema, dueAt: instantSchema.nullable(),
 });
 export const ledgerEntrySchema = z.strictObject({
-  simDay: z.int().positive().optional(), id: idSchema, kind: z.enum(['capital', 'revenue', 'expense']),
+  simDay: z.int().positive().optional(), id: idSchema, kind: z.enum(['capital', 'revenue', 'expense', 'dividend']),
   amountVnd: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   description: z.string().trim().min(1).max(1000), recordedAt: instantSchema, projectId: idSchema.nullable(),
 });
@@ -58,5 +59,5 @@ export const companySchema: z.ZodType<CompanySnapshot> = z.strictObject({
   employees: z.array(employeeSchema),
   projects: z.array(projectSchema),
   tasks: z.array(taskSchema),
-  ledger: z.array(ledgerEntrySchema), business: businessSchema.optional(),
+  corporate: corporateSchema.optional(), ledger: z.array(ledgerEntrySchema), business: businessSchema.optional(),
 });

@@ -1,3 +1,4 @@
+import { CorporatePanel } from './CorporatePanel';
 import { BusinessPanel } from './BusinessPanel';
 import React, { useMemo, useState } from 'react';
 import { X, Users, Wallet, FolderKanban, CheckSquare, Plus } from 'lucide-react';
@@ -6,7 +7,7 @@ import { DEPARTMENT_META } from '../agents/roster';
 import type { DepartmentId } from '../agents/types';
 import type { LedgerEntry, ManagedTask } from '../types/company';
 
-type ManagementTab = 'hr' | 'finance' | 'projects' | 'tasks' | 'business';
+type ManagementTab = 'hr' | 'finance' | 'projects' | 'tasks' | 'business' | 'corporate';
 
 function formatVnd(amount: number): string {
   return `${new Intl.NumberFormat('vi-VN').format(amount)} ₫`;
@@ -204,6 +205,7 @@ export const CompanyManagementPanel: React.FC = () => {
         </div>
 
         <div className="mgmt-tabs">
+          <button className="mgmt-tab" onClick={()=>{setTab('corporate');setFeedback(null);}}>Điều hành CEO</button>
           <button className="mgmt-tab" onClick={() => { setTab('business'); setFeedback(null); }}>Kinh doanh</button>
           <button
             className={`mgmt-tab ${tab === 'hr' ? 'active' : ''}`}
@@ -254,6 +256,7 @@ export const CompanyManagementPanel: React.FC = () => {
         )}
 
         <div className="mgmt-body">
+          {tab === 'corporate' && <CorporatePanel company={company} changed={notifyCompanyChange} />}
           {tab === 'business' && <BusinessPanel company={company} changed={notifyCompanyChange} />}
           {/* TAB 1: NHÂN SỰ (HR) */}
           {tab === 'hr' && (

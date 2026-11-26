@@ -304,7 +304,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const savedAtIso = new Date().toISOString();
     try {
       const saveRevision = await saveGameToIndexedDB({
-        version: '0.3.0',
+        version: '0.4.0',
         savedAtIso,
         day: s.day,
         simMinutes: s.simMinutes,

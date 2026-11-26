@@ -75,6 +75,8 @@ export class BusinessEngine {
     c.status = 'active';
   }
 
+  setStrategy(strategy: BusinessState['strategy']) { this.state.strategy = strategy; }
+
   configure(strategy: BusinessState['strategy'], salary: number, overhead: number) {
     if (
       !['skills', 'capacity'].includes(strategy) ||
@@ -82,6 +84,7 @@ export class BusinessEngine {
       !Number.isSafeInteger(salary * this.company.staff.listEmployees().length)
     )
       throw new Error('Chính sách không hợp lệ');
+    this.company.corporate.payroll(this.company.staff.listEmployees(), salary);
     Object.assign(this.state, { strategy, salaryPerEmployee: salary, dailyOverhead: overhead });
   }
 
@@ -137,7 +140,7 @@ export class BusinessEngine {
     }
     const active = this.company.staff.listEmployees().filter((e) => e.availability === 'active');
     for (let closed = s.lastDay ?? day; closed < day; closed++) {
-      const salary = active.length * s.salaryPerEmployee;
+      const salary = this.company.corporate.payroll(active, s.salaryPerEmployee);
       if (salary) s.unpaid.push({ day: closed, category: 'salary', amountVnd: salary });
       if (s.dailyOverhead)
         s.unpaid.push({ day: closed, category: 'overhead', amountVnd: s.dailyOverhead });

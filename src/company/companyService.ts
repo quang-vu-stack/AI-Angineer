@@ -1,3 +1,4 @@
+import { CorporateEngine, validateCorporate } from './corporateEngine';
 import { BusinessEngine } from './businessEngine';
 import { DEPARTMENT_META } from '../agents/roster';
 import type { AgentEntity, DepartmentId } from '../agents/types';
@@ -68,17 +69,19 @@ export function parseCompanySnapshot(input: unknown): CompanySnapshot {
     }
   }
   summarizeLedger(snapshot.ledger);
+  validateCorporate(snapshot);
   return snapshot;
 }
 
 const foundationProject = { id: 'world-v01', name: 'AI Company World 3D V0.1', department: 'operations' } as const;
 
 export class CompanyService {
+  readonly corporate: CorporateEngine;
   readonly business: BusinessEngine;
   readonly staff: Omit<StaffDirectory, 'update'>;
   readonly tasks: TaskManager;
   readonly projects: ProjectDirectory;
-  readonly finance: CompanyLedger;
+  readonly finance: Pick<CompanyLedger, 'record' | 'report' | 'summary'>;
   readonly #directory: StaffDirectory;
   readonly #ledger: CompanySnapshot['ledger'];
 
@@ -98,7 +101,15 @@ export class CompanyService {
       this.projects.require(task.projectId);
     });
     this.#ledger = snapshot.ledger;
-    this.finance = new CompanyLedger(this.#ledger, (id) => this.projects.require(id));
+    const ledger = new CompanyLedger(this.#ledger, (id) => this.projects.require(id));
+    this.finance = {
+      record: entry => {
+        if (entry.kind === 'dividend') throw new Error('Use the corporate dividend register');
+        return ledger.record(entry);
+      },
+      report: ledger.report.bind(ledger), summary: ledger.summary.bind(ledger),
+    };
+    this.corporate = new CorporateEngine(this, ledger.record.bind(ledger), snapshot.corporate);
     this.business = new BusinessEngine(this, snapshot.business);
   }
 
@@ -149,6 +160,7 @@ export class CompanyService {
       projects: this.projects.list(),
       tasks: this.tasks.getAllTasks(),
       business: this.business.snapshot(),
+      corporate: this.corporate.snapshot(),
       ledger: structuredClone(this.#ledger),
     };
   }
