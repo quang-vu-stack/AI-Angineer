@@ -40,6 +40,7 @@ export interface LedgerEntry {
 
 export interface CompanySnapshot {
   schemaVersion: 1;
+  workflow?: import('./workflow').WorkflowState;
   corporate?: import('./corporate').CorporateState;
   business?: import('./companySchema').BusinessState;
   currency: 'VND';

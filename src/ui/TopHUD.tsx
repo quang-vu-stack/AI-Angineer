@@ -35,6 +35,7 @@ export const TopHUD: React.FC = () => {
   const showBubbles = useGameStore((s) => s.showSpeechBubbles);
   const perf = useGameStore((s) => s.perf);
   const agents = useGameStore((s) => s.agents);
+  const unreadWorkflow = useGameStore(s => s.company.workflow.unread);
   const managementPanelOpen = useGameStore((s) => s.managementPanelOpen);
 
   const togglePause = useGameStore((s) => s.togglePause);
@@ -66,7 +67,7 @@ export const TopHUD: React.FC = () => {
           title="Quản trị Nhân sự, Tài chính, Dự án & Nhiệm vụ"
         >
           <LayoutDashboard size={14} />
-          <span>Quản trị</span>
+          <span>Quản trị{unreadWorkflow > 0 && ` · ${unreadWorkflow} thông báo`}</span>
         </button>
 
         <button

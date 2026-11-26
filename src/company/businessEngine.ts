@@ -1,4 +1,5 @@
 import type { CompanyService } from './companyService';
+import type { ManagedTask } from '../types/company';
 import type { DepartmentId } from '../agents/types';
 import type { BusinessState, Offer } from '../types/companySchema';
 import { offerSchema, simDaySchema, titleSchema } from '../types/companySchema';
@@ -66,7 +67,7 @@ export class BusinessEngine {
         title: req.title,
         department: req.department,
         projectId: c.projectId,
-        assignedAgentId: this.assignee(req.department, req.skills),
+        assignedAgentId: this.chooseAssignee(req.department, req.skills),
         priority: 'high',
         dueAt: null,
       });
@@ -88,7 +89,13 @@ export class BusinessEngine {
     Object.assign(this.state, { strategy, salaryPerEmployee: salary, dailyOverhead: overhead });
   }
 
-  private assignee(department: DepartmentId, skills: string[]) {
+  chooseTaskAssignee(task: ManagedTask) {
+    const contract = this.state.contracts.find(c => c.taskIds.includes(task.id));
+    const skills = contract?.requirements[contract.taskIds.indexOf(task.id)].skills ?? [];
+    return this.chooseAssignee(task.department, skills);
+  }
+
+  private chooseAssignee(department: DepartmentId, skills: string[]) {
     const required = new Set(skills.map((s) => s.toLowerCase()));
     const candidates = this.company.staff
       .listEmployees(department)
@@ -112,12 +119,13 @@ export class BusinessEngine {
     simDaySchema.parse(day);
     const s = this.state;
     if (s.lastDay !== null && day < s.lastDay) throw new Error('Ngày mô phỏng đi lùi');
+    this.company.workflow.advance(day);
     const tasks = this.company.tasks.getAllTasks();
     const byId = new Map(tasks.map((t) => [t.id, t]));
     for (const c of s.contracts) {
       if (c.status === 'proposed' && day > c.dueDay) c.status = 'expired';
       if (c.status !== 'active') continue;
-      if (c.taskIds.every((id) => byId.get(id)?.status === 'completed')) {
+      if (this.company.workflow.canSettle(c.taskIds) && c.taskIds.every((id) => byId.get(id)?.status === 'completed')) {
         this.company.finance.record({
           id: 'income-' + c.id,
           kind: 'revenue',
@@ -130,9 +138,9 @@ export class BusinessEngine {
         c.status = 'completed';
       } else {
         c.taskIds.forEach((id, i) => {
-          if (byId.get(id)?.assignedAgentId === null) {
+          if (byId.get(id)?.assignedAgentId === null && this.company.workflow.runnable(id)) {
             const req = c.requirements[i];
-            const agent = this.assignee(req.department, req.skills);
+            const agent = this.chooseAssignee(req.department, req.skills);
             if (agent) this.company.tasks.assign(id, agent);
           }
         });
@@ -167,7 +175,7 @@ export class BusinessEngine {
         tasks.some((t) => t.department === department && t.status !== 'completed')
       )
         continue;
-      const agent = this.assignee(department, []);
+      const agent = this.chooseAssignee(department, []);
       if (!agent) continue;
       const projectId = 'business-operations';
       if (!this.company.projects.list().some((p) => p.id === projectId))

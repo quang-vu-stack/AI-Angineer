@@ -1,3 +1,4 @@
+import { workflowSchema } from './workflow';
 import { corporateSchema } from './corporate';
 import { z } from 'zod';
 import { DEPARTMENT_META } from '../agents/roster';
@@ -59,5 +60,5 @@ export const companySchema: z.ZodType<CompanySnapshot> = z.strictObject({
   employees: z.array(employeeSchema),
   projects: z.array(projectSchema),
   tasks: z.array(taskSchema),
-  corporate: corporateSchema.optional(), ledger: z.array(ledgerEntrySchema), business: businessSchema.optional(),
+  workflow: workflowSchema.optional(), corporate: corporateSchema.optional(), ledger: z.array(ledgerEntrySchema), business: businessSchema.optional(),
 });

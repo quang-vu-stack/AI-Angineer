@@ -34,7 +34,8 @@ export class TaskManager implements ITaskManager {
   readonly #employee: (id: string) => Employee;
   readonly #validateScope: (task: ManagedTask) => void;
 
-  constructor(tasks: ManagedTask[], employee: (id: string) => Employee, validateScope: (task: ManagedTask) => void) {
+  constructor(tasks: ManagedTask[], employee: (id: string) => Employee, validateScope: (task: ManagedTask) => void,
+    private readonly runnable: (id: string) => boolean = () => true) {
     this.#tasks = new Map(tasks.map((task) => [task.id, task]));
     this.#employee = employee;
     this.#validateScope = validateScope;
@@ -67,6 +68,7 @@ export class TaskManager implements ITaskManager {
   assign(taskId: string, agentId: string | null): ManagedTask {
     const current = this.requireTask(taskId);
     if (current.status === 'completed') throw new Error('Completed tasks cannot be reassigned');
+    if (agentId !== null && !this.runnable(taskId)) throw new Error('Nhiệm vụ đang chờ quy trình.');
     const updated = { ...current, assignedAgentId: agentId };
     this.validateAssignee(updated);
     this.write(updated);
@@ -76,6 +78,7 @@ export class TaskManager implements ITaskManager {
   transition(taskId: string, status: TaskStatus): ManagedTask {
     const current = this.requireTask(taskId);
     if (status === current.status) return { ...current };
+    if (!this.runnable(taskId)) throw new Error('Nhiệm vụ đang chờ quy trình.');
     if (!transitions[current.status].includes(status)) throw new Error(`Invalid task transition: ${current.status} -> ${status}`);
     const updated = { ...current, status, progress: status === 'completed' ? 100 : current.progress };
     this.validateAssignee(updated);
@@ -100,7 +103,7 @@ export class TaskManager implements ITaskManager {
 
   advanceTask(taskId: string, deltaProgress: number): ManagedTask | null {
     const current = this.#tasks.get(taskId);
-    if (!current || current.assignedAgentId === null
+    if (!current || !this.runnable(taskId) || current.assignedAgentId === null
       || (current.status !== 'queued' && current.status !== 'in_progress')
       || !Number.isFinite(deltaProgress) || deltaProgress <= 0) return null;
     const progress = Math.min(100, current.progress + deltaProgress);
@@ -119,7 +122,7 @@ export class TaskManager implements ITaskManager {
     let current: ManagedTask | undefined;
     let rank = -1;
     for (const task of this.#tasks.values()) {
-      if (task.assignedAgentId !== agentId || (task.status !== 'queued' && task.status !== 'in_progress')) continue;
+      if (task.assignedAgentId !== agentId || !this.runnable(task.id) || (task.status !== 'queued' && task.status !== 'in_progress')) continue;
       const taskRank = priorityRank[task.priority] + (task.status === 'in_progress' ? 3 : 0);
       if (taskRank > rank) {
         current = task;

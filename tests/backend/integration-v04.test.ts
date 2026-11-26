@@ -7,7 +7,7 @@ import { Coordination } from '../../src/simulation/coordination';
 import { useGameStore } from '../../src/store/useGameStore';
 import { loadGameFromIndexedDB } from '../../src/services/indexedDbService';
 
-test('HQ camera, training navigation and corporate records coexist in a V0.4 save', async () => {
+test('HQ camera, training navigation and corporate records coexist in the current game save', async () => {
   Object.defineProperty(globalThis,'indexedDB',{configurable:true,value:new IDBFactory()});
   const agents=createInitialAgents();
   const company=CompanyService.create(agents);
@@ -26,7 +26,7 @@ test('HQ camera, training navigation and corporate records coexist in a V0.4 sav
   assert.ok(trainee.path.length>0);
   await state().saveNow();
   assert.equal(state().persistenceError,null);
-  assert.equal((await loadGameFromIndexedDB())?.version,'0.4.0');
+  assert.equal((await loadGameFromIndexedDB())?.version,'0.5.0');
   await state().hydrateFromIndexedDB();
   assert.deepEqual(state().company.corporate.snapshot(),company.corporate.snapshot());
   assert.equal(state().agents.length,20);

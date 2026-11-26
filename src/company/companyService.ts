@@ -1,3 +1,4 @@
+import { WorkflowEngine, validateWorkflow } from './workflowEngine';
 import { CorporateEngine, validateCorporate } from './corporateEngine';
 import { BusinessEngine } from './businessEngine';
 import { DEPARTMENT_META } from '../agents/roster';
@@ -70,12 +71,14 @@ export function parseCompanySnapshot(input: unknown): CompanySnapshot {
   }
   summarizeLedger(snapshot.ledger);
   validateCorporate(snapshot);
+  validateWorkflow(snapshot);
   return snapshot;
 }
 
 const foundationProject = { id: 'world-v01', name: 'AI Company World 3D V0.1', department: 'operations' } as const;
 
 export class CompanyService {
+  readonly workflow: WorkflowEngine;
   readonly corporate: CorporateEngine;
   readonly business: BusinessEngine;
   readonly staff: Omit<StaffDirectory, 'update'>;
@@ -99,7 +102,7 @@ export class CompanyService {
     this.tasks = new TaskManager(snapshot.tasks, (id) => this.staff.getEmployee(id), (task) => {
       this.staff.getDepartment(task.department);
       this.projects.require(task.projectId);
-    });
+    }, id => this.workflow.runnable(id));
     this.#ledger = snapshot.ledger;
     const ledger = new CompanyLedger(this.#ledger, (id) => this.projects.require(id));
     this.finance = {
@@ -111,6 +114,7 @@ export class CompanyService {
     };
     this.corporate = new CorporateEngine(this, ledger.record.bind(ledger), snapshot.corporate);
     this.business = new BusinessEngine(this, snapshot.business);
+    this.workflow = new WorkflowEngine(this, snapshot.workflow);
   }
 
   static create(agents: readonly AgentEntity[]): CompanyService {
@@ -161,6 +165,7 @@ export class CompanyService {
       tasks: this.tasks.getAllTasks(),
       business: this.business.snapshot(),
       corporate: this.corporate.snapshot(),
+      workflow: this.workflow.snapshot(),
       ledger: structuredClone(this.#ledger),
     };
   }
