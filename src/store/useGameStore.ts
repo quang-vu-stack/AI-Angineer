@@ -264,8 +264,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resetOverviewCamera: () =>
     set({
       cameraFocusTarget: {
-        target: [0, 0, 0],
-        offset: [0, 21, 24],
+        target: [-4, 0, 0],
+        offset: [0, 24, 27],
       },
     }),
 

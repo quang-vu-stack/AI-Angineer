@@ -60,6 +60,7 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = React.memo(
         agent.state === 'Meeting' ||
         agent.state === 'Resting';
       const inCoffeeLounge = agent.position[0] > 8.5 && Math.abs(agent.position[2]) < 3.8;
+      const inTrainingCenter = agent.position[0] < -18.5 && agent.position[2] > 4.2;
 
       const targetY = isSeated ? -0.22 : 0;
       const posLerp = Math.min(1, dt * 12);
@@ -120,16 +121,17 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = React.memo(
         headYaw = Math.sin(t * 1.2 + phase) * 0.3;
         headPitch = Math.sin(t * 2.8 + phase) * 0.06;
       } else if (agent.state === 'Talking') {
-        // Expressive conversational gestures & active head nodding
+        // Expressive conversational / mentoring / training gestures
         const talk = Math.sin(t * 5.4 + phase);
         const talk2 = Math.cos(t * 3.8 + phase);
-        torsoYaw = talk2 * 0.1;
-        lArmX = -0.75 + talk * 0.34;
-        rArmX = -0.62 - talk2 * 0.3;
-        lArmZ = 0.24;
-        rArmZ = -0.24;
-        headYaw = Math.sin(t * 3.5 + phase) * 0.24;
-        headPitch = Math.sin(t * 5.8 + phase) * 0.08;
+        torsoYaw = talk2 * (inTrainingCenter ? 0.16 : 0.1);
+        torsoPitch = inTrainingCenter ? 0.06 : 0.02;
+        lArmX = (inTrainingCenter ? -1.15 : -0.75) + talk * 0.36;
+        rArmX = (inTrainingCenter ? -0.95 : -0.62) - talk2 * 0.32;
+        lArmZ = inTrainingCenter ? 0.34 : 0.24;
+        rArmZ = inTrainingCenter ? -0.3 : -0.24;
+        headYaw = Math.sin(t * (inTrainingCenter ? 2.4 : 3.5) + phase) * 0.28;
+        headPitch = Math.sin(t * 5.8 + phase) * 0.09;
       } else if (agent.state === 'Resting') {
         // Relaxed lean-back; if in Coffee Lounge, occasional coffee-sip right-arm motion
         const breath = Math.sin(t * 1.4 + phase);

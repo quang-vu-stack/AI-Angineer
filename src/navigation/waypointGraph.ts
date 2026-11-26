@@ -54,7 +54,7 @@ export const WAYPOINTS: Record<string, WaypointNode> = {
   hall_w_mid: {
     id: 'hall_w_mid',
     position: [-6.6, 0, 0],
-    neighbors: ['hall_nw_ops', 'hall_sw'],
+    neighbors: ['hall_nw_ops', 'hall_sw', 'hq_west_arch'],
   },
   hall_e_mid: {
     id: 'hall_e_mid',
@@ -521,6 +521,79 @@ export const WAYPOINTS: Record<string, WaypointNode> = {
     roomId: 'coffee_lounge',
     facingRotationY: Math.PI / 2,
   },
+  // === 10. CORPORATE WEST HQ WING (Reception, Boardroom, Interview & Training Center) ===
+  hq_west_arch: {
+    id: 'hq_west_arch',
+    position: [-19.4, 0, 0],
+    neighbors: ['hall_w_mid', 'reception_front', 'hq_corridor_n', 'hq_corridor_s'],
+    roomId: 'reception_lobby',
+  },
+  reception_front: {
+    id: 'reception_front',
+    position: [-20.8, 0, 0],
+    neighbors: ['hq_west_arch'],
+    roomId: 'reception_lobby',
+    facingRotationY: -Math.PI / 2,
+  },
+  hq_corridor_n: {
+    id: 'hq_corridor_n',
+    position: [-19.4, 0, -5.8],
+    neighbors: ['hq_west_arch', 'board_hub_s', 'board_hub_n'],
+    roomId: 'boardroom',
+  },
+  board_hub_s: {
+    id: 'board_hub_s',
+    position: [-22.2, 0, -5.8],
+    neighbors: ['hq_corridor_n', 'board_seat_4', 'board_seat_5', 'board_seat_6'],
+    roomId: 'boardroom',
+  },
+  board_hub_n: {
+    id: 'board_hub_n',
+    position: [-19.4, 0, -10.5],
+    neighbors: ['hq_corridor_n', 'board_north_aisle'],
+    roomId: 'boardroom',
+  },
+  board_north_aisle: {
+    id: 'board_north_aisle',
+    position: [-22.2, 0, -10.5],
+    neighbors: ['board_hub_n', 'board_seat_1', 'board_seat_2', 'board_seat_3'],
+    roomId: 'boardroom',
+  },
+  board_seat_1: { id: 'board_seat_1', position: [-23.4, 0, -9.65], neighbors: ['board_north_aisle'], roomId: 'boardroom', facingRotationY: 0 },
+  board_seat_2: { id: 'board_seat_2', position: [-22.2, 0, -9.65], neighbors: ['board_north_aisle'], roomId: 'boardroom', facingRotationY: 0 },
+  board_seat_3: { id: 'board_seat_3', position: [-21.0, 0, -9.65], neighbors: ['board_north_aisle'], roomId: 'boardroom', facingRotationY: 0 },
+  board_seat_4: { id: 'board_seat_4', position: [-23.4, 0, -6.75], neighbors: ['board_hub_s'], roomId: 'boardroom', facingRotationY: Math.PI },
+  board_seat_5: { id: 'board_seat_5', position: [-22.2, 0, -6.75], neighbors: ['board_hub_s'], roomId: 'boardroom', facingRotationY: Math.PI },
+  board_seat_6: { id: 'board_seat_6', position: [-21.0, 0, -6.75], neighbors: ['board_hub_s'], roomId: 'boardroom', facingRotationY: Math.PI },
+
+  hq_corridor_s: {
+    id: 'hq_corridor_s',
+    position: [-19.4, 0, 5.4],
+    neighbors: ['hq_west_arch', 'training_hub', 'training_podium_aisle'],
+    roomId: 'training_center',
+  },
+  training_hub: {
+    id: 'training_hub',
+    position: [-19.4, 0, 7.6],
+    neighbors: ['hq_corridor_s', 'training_seat_1', 'training_seat_2', 'interview_seat_1'],
+    roomId: 'training_center',
+  },
+  training_podium_aisle: {
+    id: 'training_podium_aisle',
+    position: [-23.6, 0, 5.4],
+    neighbors: ['hq_corridor_s', 'training_podium_spot'],
+    roomId: 'training_center',
+  },
+  training_podium_spot: {
+    id: 'training_podium_spot',
+    position: [-23.6, 0, 7.6],
+    neighbors: ['training_podium_aisle'],
+    roomId: 'training_center',
+    facingRotationY: Math.PI / 2,
+  },
+  training_seat_1: { id: 'training_seat_1', position: [-21.55, 0, 6.9], neighbors: ['training_hub'], roomId: 'training_center', facingRotationY: -Math.PI / 2 },
+  training_seat_2: { id: 'training_seat_2', position: [-21.55, 0, 8.3], neighbors: ['training_hub'], roomId: 'training_center', facingRotationY: -Math.PI / 2 },
+  interview_seat_1: { id: 'interview_seat_1', position: [-20.6, 0, 9.55], neighbors: ['training_hub'], roomId: 'training_center', facingRotationY: 0 },
 };
 
 export function getSeatFacingRotation(position: [number, number, number]): number | null {

@@ -158,7 +158,9 @@ body,
   position: absolute;
   top: 68px;
   right: 12px;
-  width: 292px;
+  width: 298px;
+  max-height: calc(100vh - 130px);
+  overflow-y: auto;
   z-index: 15;
   padding: 12px;
   border-radius: 12px;
@@ -380,7 +382,7 @@ body,
 
 .cmd-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
 }
 

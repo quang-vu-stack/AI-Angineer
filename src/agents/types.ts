@@ -15,7 +15,10 @@ export type RoomId =
   | 'media_room'
   | 'finance_hr_room'
   | 'central_meeting_room'
-  | 'coffee_lounge';
+  | 'coffee_lounge'
+  | 'reception_lobby'
+  | 'boardroom'
+  | 'training_center';
 
 export type AgentState =
   | 'Idle'
@@ -58,7 +61,6 @@ export interface AgentAppearance {
   hairColor: string;
   heightScale: number;
   hasGlasses: boolean;
-  // Sprint 02+ optional appearance traits (backward-compatible with V0.1 saves)
   buildScale?: number;
   hairStyle?: HairStyle;
   outfitStyle?: OutfitStyle;

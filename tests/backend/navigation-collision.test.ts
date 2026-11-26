@@ -104,3 +104,28 @@ test('pathfinding routes every employee desk to Coffee Lounge seats and espresso
     }
   }
 });
+
+test('pathfinding routes every employee desk to Reception, Boardroom, and Training Center without clipping', () => {
+  const agents = createInitialAgents();
+  const hqGoals = ['reception_front', 'board_seat_1', 'board_seat_5', 'training_podium_spot', 'training_seat_1', 'interview_seat_1'];
+  for (const agent of agents) {
+    for (const goalId of hqGoals) {
+      const path = findPathToWaypoint(agent.position, goalId);
+      assert.ok(path.length >= 2, `Expected multi-step path for ${agent.id} -> ${goalId}`);
+      for (let i = 0; i < path.length - 1; i++) {
+        const hit = segmentIntersectsObstacle(
+          path[i][0],
+          path[i][2],
+          path[i + 1][0],
+          path[i + 1][2],
+          0.18
+        );
+        assert.equal(
+          hit,
+          null,
+          `HQ path segment ${i} for ${agent.id} -> ${goalId} clips through ${hit?.id ?? 'unknown'}`
+        );
+      }
+    }
+  }
+});

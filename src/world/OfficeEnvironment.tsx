@@ -4,6 +4,9 @@ import { OFFICE_ROOMS } from './officeLayout';
 import { InstancedFurniture } from './InstancedFurniture';
 import { CentralMeetingRoom } from './CentralMeetingRoom';
 import { CoffeeLoungeZone } from './CoffeeLoungeZone';
+import { CeoExecutiveSuite } from './modules/CeoExecutiveSuite';
+import { CorporateWestWing } from './modules/CorporateWestWing';
+import { HQ_WORLD_BOUNDS } from './modules/hqModules';
 
 interface OfficeEnvironmentProps {
   castShadow: boolean;
@@ -218,8 +221,8 @@ export const OfficeEnvironment: React.FC<OfficeEnvironmentProps> = ({ castShadow
   return (
     <group>
       {/* Main Base Architectural Tile Floor (36m x 24m) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
-        <planeGeometry args={[36, 24]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[HQ_WORLD_BOUNDS.centerX, -0.02, 0]} receiveShadow>
+        <planeGeometry args={[HQ_WORLD_BOUNDS.width, HQ_WORLD_BOUNDS.depth]} />
         <meshStandardMaterial map={floorTex} roughness={0.6} metalness={0.08} />
       </mesh>
 
@@ -258,7 +261,8 @@ export const OfficeEnvironment: React.FC<OfficeEnvironmentProps> = ({ castShadow
       {/* Outer Perimeter Walls */}
       <SolidWall position={[0, 1.5, -12]} args={[36, 3, 0.25]} />
       <SolidWall position={[0, 1.5, 12]} args={[36, 3, 0.25]} />
-      <SolidWall position={[-18, 1.5, 0]} args={[0.25, 3, 24]} />
+      <SolidWall position={[-18, 1.5, -8.8]} args={[0.25, 3, 6.4]} />
+      <SolidWall position={[-18, 1.5, 8.8]} args={[0.25, 3, 6.4]} />
       <SolidWall position={[18, 1.5, 0]} args={[0.25, 3, 24]} />
 
       {/* Wall Whiteboards in Engineering, AI Research & Media */}
@@ -285,6 +289,8 @@ export const OfficeEnvironment: React.FC<OfficeEnvironmentProps> = ({ castShadow
       {/* Central Meeting Room Table, 8 Instanced Chairs & Live Project Progress LED Screen */}
       <CentralMeetingRoom castShadow={castShadow} />
       <CoffeeLoungeZone castShadow={castShadow} />
+      <CeoExecutiveSuite castShadow={castShadow} />
+      <CorporateWestWing castShadow={castShadow} />
 
       {/* Instanced Semi-Realistic Office Furniture & Lights */}
       <InstancedFurniture castShadow={castShadow} />
