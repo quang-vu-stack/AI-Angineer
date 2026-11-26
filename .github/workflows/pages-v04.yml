@@ -28,6 +28,10 @@ jobs:
         run: |
           test -s dist/index.html
           node --input-type=module -e 'import fs from "node:fs"; const h=fs.readFileSync("dist/index.html","utf8"); const paths=[...h.matchAll(/(?:src|href)="(\/AI-Angineer\/assets\/[^"]+)"/g)].map(m=>m[1]); if(!paths.length||paths.some(p=>!fs.existsSync("dist/"+p.slice("/AI-Angineer/".length)))) throw Error("Missing Pages assets");'
+      - name: Install Chromium for Pages smoke test
+        run: npx playwright install --with-deps chromium
+      - name: Test actual Pages subpath build in browser
+        run: npx playwright test --config=playwright.pages.config.ts
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
