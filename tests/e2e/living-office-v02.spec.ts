@@ -9,7 +9,7 @@ test.describe('AI Company World 3D — Sprint 02: Living Office', () => {
 
     await page.goto('/');
     await expect(page.locator('canvas').first()).toBeVisible();
-    await expect(page.getByTestId('top-hud')).toContainText('V0.2 Living Office');
+    await expect(page.getByTestId('top-hud')).toContainText('Living Office');
 
     // Open Company Management Panel
     await page.getByTestId('open-company-mgmt-btn').click();
@@ -50,6 +50,7 @@ test.describe('AI Company World 3D — Sprint 02: Living Office', () => {
 
     // Command an agent to the meeting room
     await page.getByTestId('agent-item-EMP-02').click();
+    await expect(page.getByTestId('agent-ai-personality')).toBeVisible();
     await page.getByTestId('agent-inspector').getByRole('button', { name: 'Phòng họp' }).click();
 
     expect(errors).toEqual([]);

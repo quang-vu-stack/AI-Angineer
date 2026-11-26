@@ -66,6 +66,8 @@ const PARTITION_WALL_OBSTACLES: ObstacleBox[] = [
  */
 export const STATIC_OBSTACLES: ObstacleBox[] = [
   { id: 'meeting_table', minX: -2.95, maxX: 2.95, minZ: -1.02, maxZ: 1.02, category: 'table' },
+  { id: 'coffee_table', minX: 10.75, maxX: 12.85, minZ: -0.43, maxZ: 0.43, category: 'table' },
+  { id: 'coffee_bar', minX: 15.05, maxX: 16.15, minZ: -1.7, maxZ: 1.7, category: 'desk' },
   ...buildDeskObstacles(),
   ...PARTITION_WALL_OBSTACLES,
 ];

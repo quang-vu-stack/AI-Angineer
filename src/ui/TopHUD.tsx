@@ -18,6 +18,14 @@ function formatClock(simMinutes: number): string {
   return `${hh}:${mm}`;
 }
 
+function getDayPhaseLabel(simMinutes: number): string {
+  const hour = (Math.floor(simMinutes) % 1440) / 60;
+  if (hour >= 6 && hour < 11) return 'Sáng';
+  if (hour >= 11 && hour < 14) return 'Trưa';
+  if (hour >= 14 && hour < 18.5) return 'Chiều';
+  return 'Tối';
+}
+
 export const TopHUD: React.FC = () => {
   const day = useGameStore((s) => s.day);
   const simMinutes = useGameStore((s) => s.simMinutes);
@@ -46,7 +54,7 @@ export const TopHUD: React.FC = () => {
       <div className="hud-brand">
         <div className="hud-title">AI COMPANY WORLD 3D</div>
         <div className="hud-subtitle">
-          V0.2 Living Office • Ngày {day} • {formatClock(simMinutes)} • Năng suất: {avgProductivity}%
+          V0.3 Living Office 2.0 • Ngày {day} • {formatClock(simMinutes)} ({getDayPhaseLabel(simMinutes)}) • Năng suất: {avgProductivity}%
         </div>
       </div>
 

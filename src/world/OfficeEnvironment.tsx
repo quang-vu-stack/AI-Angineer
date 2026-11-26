@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OFFICE_ROOMS } from './officeLayout';
 import { InstancedFurniture } from './InstancedFurniture';
 import { CentralMeetingRoom } from './CentralMeetingRoom';
+import { CoffeeLoungeZone } from './CoffeeLoungeZone';
 
 interface OfficeEnvironmentProps {
   castShadow: boolean;
@@ -283,6 +284,7 @@ export const OfficeEnvironment: React.FC<OfficeEnvironmentProps> = ({ castShadow
 
       {/* Central Meeting Room Table, 8 Instanced Chairs & Live Project Progress LED Screen */}
       <CentralMeetingRoom castShadow={castShadow} />
+      <CoffeeLoungeZone castShadow={castShadow} />
 
       {/* Instanced Semi-Realistic Office Furniture & Lights */}
       <InstancedFurniture castShadow={castShadow} />
