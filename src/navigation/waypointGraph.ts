@@ -59,7 +59,7 @@ export const WAYPOINTS: Record<string, WaypointNode> = {
   hall_e_mid: {
     id: 'hall_e_mid',
     position: [6.8, 0, 0],
-    neighbors: ['hall_ne', 'hall_se', 'door_meeting_e'],
+    neighbors: ['hall_ne', 'hall_se', 'door_meeting_e', 'lounge_entry'],
   },
 
   hall_sw_ai: {
@@ -454,6 +454,72 @@ export const WAYPOINTS: Record<string, WaypointNode> = {
     neighbors: ['meeting_hub_s'],
     roomId: 'central_meeting_room',
     facingRotationY: Math.PI,
+  },
+  // === 9. COFFEE, REST & COMMUNICATION LOUNGE (East Atrium X: 9.4..16.2, Z: -2.9..2.9) ===
+  lounge_entry: {
+    id: 'lounge_entry',
+    position: [9.0, 0, 0],
+    neighbors: ['hall_e_mid', 'lounge_hub_n', 'lounge_hub_s'],
+    roomId: 'coffee_lounge',
+  },
+  lounge_hub_n: {
+    id: 'lounge_hub_n',
+    position: [9.4, 0, -1.55],
+    neighbors: ['lounge_entry', 'lounge_seat_1'],
+    roomId: 'coffee_lounge',
+  },
+  lounge_hub_s: {
+    id: 'lounge_hub_s',
+    position: [9.4, 0, 1.55],
+    neighbors: ['lounge_entry', 'lounge_seat_3'],
+    roomId: 'coffee_lounge',
+  },
+  lounge_seat_1: {
+    id: 'lounge_seat_1',
+    position: [11.1, 0, -1.55],
+    neighbors: ['lounge_hub_n', 'lounge_seat_2'],
+    roomId: 'coffee_lounge',
+    facingRotationY: 0,
+  },
+  lounge_seat_2: {
+    id: 'lounge_seat_2',
+    position: [12.5, 0, -1.55],
+    neighbors: ['lounge_seat_1', 'lounge_bar_n'],
+    roomId: 'coffee_lounge',
+    facingRotationY: 0,
+  },
+  lounge_seat_3: {
+    id: 'lounge_seat_3',
+    position: [11.1, 0, 1.55],
+    neighbors: ['lounge_hub_s', 'lounge_seat_4'],
+    roomId: 'coffee_lounge',
+    facingRotationY: Math.PI,
+  },
+  lounge_seat_4: {
+    id: 'lounge_seat_4',
+    position: [12.5, 0, 1.55],
+    neighbors: ['lounge_seat_3', 'lounge_bar_s'],
+    roomId: 'coffee_lounge',
+    facingRotationY: Math.PI,
+  },
+  lounge_bar_n: {
+    id: 'lounge_bar_n',
+    position: [14.1, 0, -1.55],
+    neighbors: ['lounge_seat_2', 'lounge_coffee_bar'],
+    roomId: 'coffee_lounge',
+  },
+  lounge_bar_s: {
+    id: 'lounge_bar_s',
+    position: [14.1, 0, 1.55],
+    neighbors: ['lounge_seat_4', 'lounge_coffee_bar'],
+    roomId: 'coffee_lounge',
+  },
+  lounge_coffee_bar: {
+    id: 'lounge_coffee_bar',
+    position: [14.1, 0, 0],
+    neighbors: ['lounge_bar_n', 'lounge_bar_s'],
+    roomId: 'coffee_lounge',
+    facingRotationY: Math.PI / 2,
   },
 };
 

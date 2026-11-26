@@ -82,6 +82,7 @@ interface GameStore {
   quality: QualityLevel;
   showSpeechBubbles: boolean;
   selectedAgentId: string | null;
+  followSelectedAgent: boolean;
   cameraFocusTarget: CameraFocusTarget | null;
   perf: PerfStats;
   webglError: string | null;
@@ -98,6 +99,8 @@ interface GameStore {
   setQuality: (quality: QualityLevel) => void;
   toggleSpeechBubbles: () => void;
   selectAgent: (id: string | null) => void;
+  toggleFollowSelectedAgent: () => void;
+  setFollowSelectedAgent: (follow: boolean) => void;
   focusOnAgent: (id: string) => void;
   focusOnRoom: (roomId: RoomId) => void;
   clearCameraFocus: () => void;
@@ -124,6 +127,7 @@ function freshSimulation(saveRevision: number | null): Partial<GameStore> {
     isPaused: false,
     speed: 1,
     selectedAgentId: null,
+    followSelectedAgent: false,
     cameraFocusTarget: null,
     lastSavedAt: null,
   };
@@ -167,6 +171,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   quality: 'medium',
   showSpeechBubbles: true,
   selectedAgentId: null,
+  followSelectedAgent: false,
   cameraFocusTarget: null,
   perf: { fps: 60, drawCalls: 0, triangles: 0, heapMB: null },
   webglError: null,
@@ -229,7 +234,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setSpeed: (speed) => set({ speed }),
   setQuality: (quality) => set({ quality }),
   toggleSpeechBubbles: () => set((s) => ({ showSpeechBubbles: !s.showSpeechBubbles })),
-  selectAgent: (id) => set({ selectedAgentId: id }),
+  selectAgent: (id) => set({ selectedAgentId: id, followSelectedAgent: false }),
+  toggleFollowSelectedAgent: () => set((s) => ({ followSelectedAgent: !s.followSelectedAgent })),
+  setFollowSelectedAgent: (follow) => set({ followSelectedAgent: follow }),
 
   focusOnAgent: (id) => {
     const agent = get().agents.find((a) => a.id === id);
@@ -272,7 +279,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
           waypointId ??
           (targetState === 'Meeting'
             ? `meeting_seat_${(a.numericIndex % 8) + 1}`
-            : a.deskWaypointId);
+            : targetState === 'Resting'
+              ? `lounge_seat_${(a.numericIndex % 4) + 1}`
+              : a.deskWaypointId);
         const path = findPathToWaypoint(a.position, targetWp);
         return {
           ...a,

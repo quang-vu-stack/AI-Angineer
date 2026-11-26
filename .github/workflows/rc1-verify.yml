@@ -5,6 +5,7 @@ on:
     branches:
       - 'release/v0.2-rc1'
       - 'feature/ai-brain-v03'
+      - 'integration/v0.3'
   workflow_dispatch:
 
 permissions:
@@ -38,7 +39,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rc1-playwright-report
+          name: game-playwright-report
           path: |
             playwright-report/
             test-results/

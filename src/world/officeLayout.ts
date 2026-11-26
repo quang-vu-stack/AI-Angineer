@@ -83,6 +83,15 @@ export const OFFICE_ROOMS: RoomDefinition[] = [
     cameraTarget: [0, 0.8, 0],
     cameraOffset: [0, 9, 11],
   },
+  {
+    id: 'coffee_lounge',
+    name: 'Khu Cà Phê & Nghỉ Ngơi',
+    bounds: { x: 12.8, z: 0, width: 7.2, depth: 6.0 },
+    floorColor: '#2b2421',
+    accentColor: '#f59e0b',
+    cameraTarget: [12.8, 0.7, 0],
+    cameraOffset: [2, 8.5, 9.5],
+  },
 ];
 
 export interface DeskPlacement {
@@ -148,5 +157,5 @@ export const CEILING_LIGHT_POSITIONS: [number, number, number][] = [
   [12, 3.4, 9],
   [0, 3.4, 0],
   [-9, 3.4, 0],
-  [9, 3.4, 0],
+  [12.8, 3.4, 0],
 ];
